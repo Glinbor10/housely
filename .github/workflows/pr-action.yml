@@ -3,8 +3,6 @@ name: PR Action
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - "**.md"
 
 permissions:
   contents: read

@@ -2,6 +2,12 @@ name: Release Action
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to increment from the latest tag
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 jobs:
   verify:
@@ -45,11 +51,26 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Read version
-        run: echo "TAG_VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+      # The version lives in git tags only: no commit to main is needed, so branch protection stays strict.
+      - name: Compute next version from the latest tag
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          LAST_TAG=${LAST_TAG:-v0.0.0}
+          IFS=. read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            *) PATCH=$((PATCH + 1)) ;;
+          esac
+          echo "TAG_VERSION=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_ENV"
+          echo "PREVIOUS_TAG=${LAST_TAG}" >> "$GITHUB_ENV"
 
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ env.TAG_VERSION }}
 
       - name: Deploy to Firebase Hosting (production project)
         if: ${{ env.HAS_FIREBASE == 'true' }}
@@ -69,12 +90,3 @@ jobs:
             --title "Release ${TAG_VERSION}" \
             --generate-notes \
             --notes "[GitHub Action Info](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
-
-      - name: Increment version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version patch --no-git-tag-version
-          git add package.json package-lock.json
-          git commit -m "chore: auto increment app version [skip ci]"
-          git push
