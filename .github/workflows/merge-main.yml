@@ -1,0 +1,49 @@
+name: Main merge
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+
+# Never run two CI deployments at the same time
+concurrency:
+  group: deploy-ci
+  cancel-in-progress: false
+
+jobs:
+  deploy-ci:
+    name: Deploy to CI environment
+    runs-on: ubuntu-latest
+    environment: ci
+    env:
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI != '' && vars.FIREBASE_PROJECT_CI != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Deploy to Firebase Hosting (CI project)
+        if: ${{ env.HAS_FIREBASE == 'true' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI }}
+          projectId: ${{ vars.FIREBASE_PROJECT_CI }}
+          channelId: live
+
+      - name: Skip notice
+        if: ${{ env.HAS_FIREBASE != 'true' }}
+        run: echo "::notice::Firebase CI secret or variable not configured; build verified but not deployed."

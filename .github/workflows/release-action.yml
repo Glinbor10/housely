@@ -1,0 +1,92 @@
+name: Release Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to increment from the latest tag
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+jobs:
+  verify:
+    name: Verify (tests and dependency audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+
+  release:
+    name: Create release and deploy to production
+    runs-on: ubuntu-latest
+    needs: [verify]
+    # Configure required reviewers on this environment to approve every production deploy
+    environment: production
+    permissions:
+      contents: write
+    env:
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD != '' && vars.FIREBASE_PROJECT_PROD != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The version lives in git tags only: no commit to main is needed, so branch protection stays strict.
+      - name: Compute next version from the latest tag
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          LAST_TAG=${LAST_TAG:-v0.0.0}
+          IFS=. read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            *) PATCH=$((PATCH + 1)) ;;
+          esac
+          echo "TAG_VERSION=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_ENV"
+          echo "PREVIOUS_TAG=${LAST_TAG}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ env.TAG_VERSION }}
+
+      - name: Deploy to Firebase Hosting (production project)
+        if: ${{ env.HAS_FIREBASE == 'true' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
+          projectId: ${{ vars.FIREBASE_PROJECT_PROD }}
+          channelId: live
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${TAG_VERSION}" \
+            --target "${GITHUB_SHA}" \
+            --title "Release ${TAG_VERSION}" \
+            --generate-notes \
+            --notes "[GitHub Action Info](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
