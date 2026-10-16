@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "housely-ci",
+    "ci": "housely-ci",
+    "prod": "housely-prod"
+  }
+}
