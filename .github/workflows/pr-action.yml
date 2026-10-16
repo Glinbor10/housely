@@ -19,7 +19,7 @@ jobs:
     if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
     env:
       # Preview deploys are skipped until the Firebase secret/variable exist.
-      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CI != '' && vars.FIREBASE_PROJECT_CI != '' }}
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI != '' && vars.FIREBASE_PROJECT_CI != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +41,6 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CI }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI }}
           projectId: ${{ vars.FIREBASE_PROJECT_CI }}
           expires: 7d

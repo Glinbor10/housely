@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: write
     env:
-      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD != '' && vars.FIREBASE_PROJECT_PROD != '' }}
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD != '' && vars.FIREBASE_PROJECT_PROD != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,7 +56,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
           projectId: ${{ vars.FIREBASE_PROJECT_PROD }}
           channelId: live
 
