@@ -1,0 +1,46 @@
+name: PR Action
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  check:
+    name: Lint, typecheck, test and build
+    runs-on: ubuntu-latest
+    # Same convention as Viafirma repos: skip CI when the PR title contains [skip-ci]
+    if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
+    env:
+      # Preview deploys are skipped until the Firebase secret/variable exist.
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CI != '' && vars.FIREBASE_PROJECT_CI != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Deploy preview channel
+        if: ${{ env.HAS_FIREBASE == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CI }}
+          projectId: ${{ vars.FIREBASE_PROJECT_CI }}
+          expires: 7d
