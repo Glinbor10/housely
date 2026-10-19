@@ -29,12 +29,18 @@ export const ThisWeek = ({
         const completion = findCompletion(completions, weekIndex, zone)
         const isMine = member === currentMember
         return (
-          <Card key={zone} variant="outlined" sx={{ borderColor: isMine ? 'primary.main' : undefined }}>
+          <Card
+            key={zone}
+            variant="outlined"
+            sx={{ borderColor: isMine ? 'primary.main' : undefined }}
+          >
             <CardContent>
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                   <Typography variant="h6">{zone}</Typography>
-                  <Typography color="text.secondary">{isMine ? `${member} (you)` : member}</Typography>
+                  <Typography color="text.secondary">
+                    {isMine ? `${member} (you)` : member}
+                  </Typography>
                 </Box>
                 {completion ? (
                   <Chip color="success" label={`Done ${completion.doneAt}`} />
