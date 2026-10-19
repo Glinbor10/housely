@@ -1,0 +1,42 @@
+= DSI: Architecture
+:toc:
+:lang: en
+
+== Overview
+A single-page application (PWA) that talks directly to Firebase. There is no own backend: security is enforced with Firestore rules.
+
+[source,mermaid]
+----
+flowchart LR
+  M[Phone: React PWA] -->|SDK| A[Firebase anonymous Auth]
+  M -->|SDK, real time| F[(Firestore)]
+  M -->|loads the app| H[Firebase Hosting]
+  G[GitHub Actions] -->|deploys| H
+  G -->|deploys rules| F
+----
+
+== Code layers
+
+[cols="2,4",options="header"]
+|===
+| Folder | Responsibility
+
+| `src/domain` | Pure logic (rotation, completions). No React or Firebase
+| `src/storage` | Data access (today `localStorage`, later Firestore)
+| `src/components` | UI with MUI
+|===
+
+The allowed dependencies are verified with architecture tests (`src/architecture.test.ts`): the domain does not depend on components or storage, and there are no cycles.
+
+== Environments
+
+[cols="1,2,2",options="header"]
+|===
+| Environment | Firebase project | Deployment
+| PR preview | `housely-ci` | Automatic on every PR, expires after 7 days
+| CI | `housely-ci` | Automatic on merge to `main`
+| Production | `housely-prod` | Manual (Release Action) with approval
+|===
+
+== Decisions
+See link:adr/0001-pwa-instead-of-native-app.adoc[ADR-0001] to link:adr/0004-computed-assignment.adoc[ADR-0004].

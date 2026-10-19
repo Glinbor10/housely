@@ -1,0 +1,9 @@
+= MSI: Maintenance
+:toc:
+:lang: en
+
+* *Incidents:* issues with the `bug` template, assigned automatically and prioritized in the Project.
+* *Enhancements:* issues with the `feature` template, tied to a milestone.
+* *Versions:* semantic, by tags (`vX.Y.Z`), created with the Release Action.
+* *Dependencies:* Dependabot groups the weekly updates by ecosystem; they are merged if CI passes.
+* *Periodic review:* review the Firebase free-plan quotas and the state of security alerts.

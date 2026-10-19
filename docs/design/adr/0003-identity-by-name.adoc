@@ -1,0 +1,10 @@
+= ADR-0003: Identity by picking a name
+:lang: en
+
+*Status:* accepted
+
+*Context:* there are three trusted flatmates and no accounts or passwords are wanted.
+
+*Decision:* anonymous authentication; when joining, each person picks their name from the flat's list.
+
+*Consequences:* simple, but someone could pick another person's name. Future improvement: Google login to recover the session and strengthen identity.

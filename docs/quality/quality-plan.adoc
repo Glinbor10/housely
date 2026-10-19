@@ -1,0 +1,22 @@
+= Quality: assurance plan
+:toc:
+:lang: en
+
+[cols="2,3,2",options="header"]
+|===
+| Control | Tool | Where it applies
+
+| Style and static errors | oxlint | CI on every PR
+| Formatting | Prettier (`format:check`) | CI on every PR
+| Typing | TypeScript (`tsc -b`) | CI on every PR
+| Unit tests | Vitest, written before the code (TDD) | CI on every PR
+| Architecture tests | ArchUnitTS | CI on every PR
+| Minimum coverage | Vitest coverage | Issue https://github.com/Glinbor10/housely/issues/12[#12]
+| Dependency security | Dependabot, `npm audit` and CodeQL | Weekly and on release
+| Change review | Mandatory Pull Request, `main` protected | Always
+|===
+
+== Acceptance criteria for a change
+. The CI check passes.
+. The new tests exist and failed before the implementation.
+. The affected documentation is up to date.

@@ -20,7 +20,7 @@ The root keeps only what tools and GitHub expect there; the rest of the configur
 | `firebase/` | `firebase.json`, `.firebaserc`, Firestore rules, indexes and their emulator tests; the build is emitted to `firebase/dist` because Firebase only serves a directory inside the one that holds `firebase.json` |
 | `e2e/`      | Real-browser tests (Android and iPhone)                                                                                                                                                                       |
 | `scripts/`  | Icon generation and repository checks                                                                                                                                                                         |
-| `docs/`     | Métrica v3 documentation (Spanish, AsciiDoc)                                                                                                                                                                  |
+| `docs/`     | Métrica v3 documentation (English, AsciiDoc)                                                                                                                                                                  |
 | `public/`   | Static assets and the logo source                                                                                                                                                                             |
 
 ## Code conventions

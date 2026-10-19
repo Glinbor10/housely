@@ -1,0 +1,28 @@
+= ASI: Use cases
+:toc:
+:lang: en
+
+== Actors
+* *Flat creator:* first person to register the flat.
+* *Flatmate:* member who joins with the code.
+
+== UC-01 Create a flat (FR-01, FR-02)
+. The creator enters the flat name, members, zones and start date.
+. The system saves the flat, generates an invite code and sets it as the default flat.
+*Alternative:* if a required field is missing, the system reports it and does not save.
+
+== UC-02 Join a flat (FR-03)
+. The flatmate enters the code.
+. The system shows the flat's members that are not yet claimed.
+. The flatmate picks their name and the flat becomes the default on their device.
+*Alternative:* unknown code: the error is reported.
+
+== UC-03 Mark a zone as done (FR-04, FR-05)
+. The flatmate opens the current week and sees their zones.
+. They press "Mark as done"; the proposed date is today and can be changed.
+. The system records the completion and all members see it in real time.
+*Alternative:* correcting the date saves the same zone and week again, without duplicating.
+
+== UC-04 Check expenses (FR-09)
+. The flatmate presses the Tricount button.
+. The system opens the flat's configured link.

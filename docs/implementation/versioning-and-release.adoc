@@ -1,0 +1,46 @@
+= IAS: Versioning and release procedure
+:toc:
+:lang: en
+
+== Versioning
+Semantic versioning `MAJOR.MINOR.PATCH` is used. The version is not stored in a file: it is derived from the Git tags `vX.Y.Z`.
+
+[cols="1,3",options="header"]
+|===
+| Part | When it goes up
+| PATCH | Bug fixes with no functional changes (`v0.1.1`)
+| MINOR | New backwards-compatible functionality (`v0.2.0`). While the version is `0.x` it also marks the plan's milestones
+| MAJOR | Breaking change, or declaring the product stable (`v1.0.0`)
+|===
+
+The first MVP version is *`v0.1.0`*: the release is launched with `bump = minor` starting from `v0.0.0`.
+
+== Environments and flow
+
+[cols="1,2,2",options="header"]
+|===
+| Environment | Firebase project | How it gets there
+| PR preview | `housely-ci` (temporary 7-day channel) | Every PR; runs real-browser tests
+| CI | `housely-ci` | Every merge to `main`; runs the browser tests again
+| Production | `housely-prod` | Manual *Release Action* workflow, only the owner can launch it
+|===
+
+== Release procedure
+. Check that `main` is green (latest *Main merge* succeeded) and that `housely-ci` looks right on an Android phone and an iPhone.
+. On GitHub, go to *Actions*, *Release Action*, *Run workflow* and choose `patch`, `minor` or `major`.
+. The workflow *verifies* (lint, types, tests, production dependency audit) and deploys only if everything passes. Today the only gate is launching it by hand (only the owner can) and the `production` environment only admits protected branches. Mandatory reviewer approval is not available on private repositories with the current plan and will be enabled when the repository is made public.
+. It deploys the Firestore rules, deploys the web app, runs a smoke test that *writes no data* and creates the tag and the GitHub Release with its notes.
+. Check production from a phone and verify the version in the GitHub Release.
+
+== Rollback
+* *Web:* Firebase Hosting keeps the previous versions. In the Firebase console, go to *Hosting*, *Version history*, and *Roll back* to the previous one. It is immediate.
+* *Firestore rules:* they are versioned in Git. Revert the change with a PR and deploy again, or republish the previous version from *Firestore*, *Rules*, *History*.
+* *Data:* model changes must be backwards compatible; there are no destructive migrations.
+
+== Production prerequisites
+Once per environment, and manually:
+
+. Enable the Firestore API, create the database (production mode, region `eur3`) and enable anonymous authentication.
+. Restrict the web key by domain.
+. Give the service account the *Firebase Rules Admin* and *Cloud Datastore Index Admin* roles and set `FIRESTORE_DEPLOY_ENABLED=true`.
+. When the repository is public, require reviewer approval on the GitHub `production` environment.

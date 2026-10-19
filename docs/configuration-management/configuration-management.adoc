@@ -1,0 +1,29 @@
+= Configuration management
+:toc:
+:lang: en
+
+== Version control
+* Private repository `Glinbor10/housely`; `main` protected (PR and check required, no direct push).
+* Branches: `feat/`, `fix/`, `chore/`, `docs/`, `ci/`.
+* Conventional commits (`feat:`, `fix:`, `docs:`...), integrated by _squash merge_.
+
+== Versioning and deliveries
+* Semantic version derived from the `vX.Y.Z` tags; it is not versioned in `package.json`.
+* The Release Action computes the next version, deploys to production and publishes the GitHub Release.
+
+== Environments and configuration
+* Firebase projects `housely-ci` and `housely-prod`.
+* Repository variables: `FIREBASE_PROJECT_CI`, `FIREBASE_PROJECT_PROD`.
+* Per-environment GitHub variables (`ci`, `production`): `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` and `VITE_FIREBASE_MESSAGING_SENDER_ID`. Firebase's web configuration is public by design; security lives in the Firestore rules.
+* Local development: Firebase emulators (Auth and Firestore) with fake values versioned in `config/.env.emulators`; no credentials required. To use `housely-ci` locally, `config/.env.ci.local` (ignored by git) and `npm run dev:ci`.
+* Secrets: `FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI` and `FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD`.
+
+== Configuration items
+Source code, workflows, Firestore rules (coming soon), documentation in `docs/` and GitHub templates.
+
+== Firestore rules deployment from CI
+The rules and indexes (`firebase/firestore/`) are deployed from the workflows, before the tests that depend on them: on every PR and every merge to `main` to `housely-ci`, and on release to `housely-prod`.
+
+* It is enabled with the repository variable `FIRESTORE_DEPLOY_ENABLED=true`.
+* Each environment's service account needs, besides Firebase Hosting Admin, the *Firebase Rules Admin* and *Cloud Datastore Index Admin* roles (Google Cloud, IAM).
+* PRs deploy their rules to the shared CI environment: it is a test environment and the final rules are always those of `main`, which are redeployed on every merge.

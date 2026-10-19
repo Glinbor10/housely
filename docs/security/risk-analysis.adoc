@@ -1,0 +1,31 @@
+= Security: risk analysis and data protection
+:toc:
+:lang: en
+
+== Data processed
+* First names of the flatmates (personal data).
+* Anonymous Firebase Auth identifier per device.
+* Cleaning dates linked to each member.
+No special-category data, location or payment data is processed. The Tricount link is a URL; the expenses are not accessed.
+
+== Principles applied
+* *Minimization:* only name and activity; no email or phone.
+* *Access control:* Firestore rules limited to the flat's members.
+* *Secrets:* service account keys live only in GitHub Secrets.
+* *Separate environments:* test data goes to `housely-ci`.
+* *Transport:* all traffic goes over HTTPS (Firebase Hosting and SDK).
+
+== Data protection
+Use among flatmates falls under personal or household activity, which Article 2(2)(c) of the GDPR excludes from its scope. As long as the app is used only this way, there is no formal obligation; if it were opened to third parties or commercialized, this would have to be reviewed (privacy policy, legal basis and user rights). This is not legal advice.
+
+== Risks and controls
+
+[cols="3,3,2",options="header"]
+|===
+| Risk | Control | Status
+| Access to another flat's data | Firestore rules and tests | Issue https://github.com/Glinbor10/housely/issues/16[#16]
+| Content injection in the web app | CSP headers | Issue https://github.com/Glinbor10/housely/issues/17[#17]
+| Vulnerable dependencies | Dependabot, CodeQL, `npm audit` | Issue https://github.com/Glinbor10/housely/issues/15[#15]
+| Credential leak | GitHub Secrets, no secrets in the repo | Applied
+| Data loss | Scheduled Firestore export | Issue https://github.com/Glinbor10/housely/issues/20[#20]
+|===

@@ -34,7 +34,7 @@ npm test
 
 ## Documentation
 
-Project documentation follows a tailored Métrica v3 structure (in Spanish, AsciiDoc): see [docs/README.adoc](docs/README.adoc).
+Project documentation follows a tailored Métrica v3 structure (in English, AsciiDoc): see [docs/README.adoc](docs/README.adoc).
 
 ## What it does
 
@@ -44,7 +44,7 @@ Project documentation follows a tailored Métrica v3 structure (in Spanish, Asci
 - Owner-managed Tricount link and recovery of a flatmate who lost their phone
 - Installable on Android and iPhone as a PWA
 
-See the [user manual](docs/ias/manual-usuario.adoc) and the [versioning and release procedure](docs/ias/versionado-y-release.adoc).
+See the [user manual](docs/implementation/user-manual.adoc) and the [versioning and release procedure](docs/implementation/versioning-and-release.adoc).
 
 ## Roadmap
 

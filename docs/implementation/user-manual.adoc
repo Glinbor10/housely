@@ -1,0 +1,53 @@
+= IAS: User manual
+:toc:
+:lang: en
+
+Housely shares out the cleaning of your flat's common areas with a fair weekly rotation.
+
+== Install the app
+Housely is a website that installs like an app and also works offline.
+
+=== iPhone or iPad
+. Open Housely's address in *Safari*.
+. Tap *Share* and then *Add to Home Screen*.
+. Open Housely from the new icon.
+
+IMPORTANT: On iPhone, Safari deletes the data of a website that is not opened for a week, unless it is installed. Installing it avoids losing access to your flat.
+
+=== Android
+Open the address in *Chrome* and accept the *Install app* prompt, or use the menu and *Install app*.
+
+== Create a flat
+The first person does this.
+
+. Tap *Create a flat*.
+. Type the flat name and the members *in rotation order*. Tick the circle next to *your* name.
+. Review the zones (default: living room, kitchen and bathroom). You can add or remove some. Zone names cannot contain `/`.
+. Choose when the rotation starts (by default, the Monday of this week).
+. Tap *Create flat*. You will see the 6-character *invite code*: pass it on to your flatmates.
+
+== Join a flat
+. Tap *Join a flat* and enter the code.
+. Pick your name from those still free.
+. From then on the flat opens by itself every time you come in.
+
+== Every week
+* Under *This week* you see which zone each person has, and yours is highlighted.
+* When you clean, tap *Mark as done*. The proposed date is today and can be changed. If you make a mistake, *Update date* corrects it.
+* The others see it instantly, even if you are offline: it is saved when you get a connection again.
+* If there are more members than zones, whoever has no zone appears as *Free this week*. Over time everybody cleans the same amount: in a full cycle each person cleans each zone once.
+
+== Expenses with Tricount
+The flat owner can add your Tricount link with *Add Tricount link*. Only `https` links on tricount.com are accepted. Everyone will see the *Open Tricount* button.
+
+== If you lose your phone or the app resets
+Your identity lives on the device. If you lose it:
+
+. Ask the flat *owner* to *release* you in the *People* list (*Release*, and confirm).
+. From the new phone, tap *Join a flat*, type the code and pick your name.
+. What you had already cleaned is kept.
+
+NOTE: The owner cannot release themselves. If they lose their phone, the flat is left without a working owner; saving access with an account is a planned improvement.
+
+== Leave a flat on this device
+*Leave this flat on this device* forgets the flat only on this phone. It does not delete the flat or the member.

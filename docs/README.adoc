@@ -1,31 +1,45 @@
-= Documentación de Housely
+= Housely Documentation
 :toc:
-:lang: es
+:lang: en
 
-Documentación del proyecto adaptada (_tailoring_) de https://administracionelectronica.gob.es/[Métrica v3] a un sistema de tamaño muy pequeño: solo se mantienen los productos esenciales de cada proceso, cortos y enlazados con las issues y el código.
+Project documentation tailored from https://administracionelectronica.gob.es/[Métrica v3] to a very small system: only the essential products of each process are kept, short and linked to the issues and the code.
 
-== Enfoque
-Métrica v3 admite dos enfoques: estructurado y orientado a objetos. Housely sigue el *enfoque orientado a objetos (UML)*: casos de uso, modelo de dominio y diagramas de secuencia.
+== Approach
+Métrica v3 supports two approaches: structured and object-oriented. Housely follows the *object-oriented approach (UML)*: use cases, domain model and sequence diagrams.
 
-La implementación es en *TypeScript funcional*: el dominio son funciones puras (`src/domain`) y los conceptos del modelo (piso, persona, zona, completado) se implementan como tipos. UML sirve para modelar el dominio, no obliga a escribir clases.
+The implementation is *functional TypeScript*: the domain is pure functions (`src/domain`) and the model concepts (flat, member, zone, completion) are implemented as types. UML is used to model the domain; it does not require writing classes.
 
-== Mapa de Métrica v3
+== Métrica v3 map
+
+The folders are named in English; the Métrica v3 process code is shown in brackets.
 
 [cols="2,3,3",options="header"]
 |===
-| Proceso / interfaz | Productos | Ubicación
+| Process / interface | Products | Location
 
-| EVS: Estudio de viabilidad | Alcance, alternativas, riesgos | link:evs/estudio-viabilidad.adoc[evs/]
-| ASI: Análisis | Catálogo de requisitos, casos de uso | link:asi/catalogo-requisitos.adoc[asi/]
-| DSI: Diseño | Arquitectura, modelo de datos, decisiones (ADR) | link:dsi/arquitectura.adoc[dsi/]
-| CSI: Construcción | Código, pruebas unitarias y de arquitectura | `src/`
-| IAS: Implantación y aceptación | Entornos, despliegue, pruebas de aceptación, manual de usuario y versionado | link:ias/plan-implantacion.adoc[ias/] (link:ias/manual-usuario.adoc[manual], link:ias/versionado-y-release.adoc[versionado y release])
-| MSI: Mantenimiento | Gestión de incidencias y versiones | link:msi/mantenimiento.adoc[msi/]
-| Gestión de proyectos | Plan, hitos y riesgos | link:gpr/plan-proyecto.adoc[gpr/]
-| Seguridad | Análisis de riesgos y protección de datos | link:seguridad/analisis-riesgos.adoc[seguridad/]
-| Aseguramiento de la calidad | Plan de calidad, plan de pruebas y trazabilidad | link:calidad/plan-calidad.adoc[calidad/] (link:calidad/plan-pruebas.adoc[pruebas])
-| Gestión de la configuración | Ramas, versionado, entornos | link:gco/gestion-configuracion.adoc[gco/]
+| Feasibility study (EVS) | Scope, alternatives, risks | link:feasibility/feasibility-study.adoc[feasibility/]
+| System analysis (ASI) | Requirements catalog, use cases | link:analysis/requirements-catalog.adoc[analysis/]
+| System design (DSI) | Architecture, data model, decisions (ADR) | link:design/architecture.adoc[design/]
+| System construction (CSI) | Code, unit and architecture tests | `src/`
+| Implementation and acceptance (IAS) | Environments, deployment, acceptance tests, user manual and versioning | link:implementation/deployment-plan.adoc[implementation/] (link:implementation/user-manual.adoc[manual], link:implementation/versioning-and-release.adoc[versioning and release])
+| Maintenance (MSI) | Incident and version management | link:maintenance/maintenance.adoc[maintenance/]
+| Project management (GPR) | Plan, milestones and risks | link:project-management/project-plan.adoc[project-management/]
+| Security | Risk analysis and data protection | link:security/risk-analysis.adoc[security/]
+| Quality assurance | Quality plan, test plan and traceability | link:quality/quality-plan.adoc[quality/] (link:quality/test-plan.adoc[tests])
+| Configuration management (GCO) | Branches, versioning, environments | link:configuration-management/configuration-management.adoc[configuration-management/]
 |===
 
-== Trazabilidad
-Cada requisito del catálogo (`RF-xx`, `RNF-xx`) se enlaza con su issue de GitHub, y cada issue con su PR. Los hitos (milestones) son las iteraciones del plan de proyecto.
+== Traceability
+Each requirement in the catalog (`FR-xx`, `NFR-xx`) is linked to its GitHub issue, and each issue to its PR. Milestones are the iterations of the project plan.
+
+== Identifier conventions
+
+[cols="1,3",options="header"]
+|===
+| Prefix | Meaning
+| `FR-xx` | Functional requirement
+| `NFR-xx` | Non-functional requirement
+| `UC-xx` | Use case
+| `AT-xx` | Acceptance test
+| `R-xx` | Project risk
+|===

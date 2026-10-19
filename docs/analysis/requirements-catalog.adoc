@@ -1,0 +1,38 @@
+= ASI: Requirements catalog
+:toc:
+:lang: en
+
+== Functional requirements
+
+[cols="1,4,1,1",options="header"]
+|===
+| ID | Description | Priority | Issue
+
+| FR-01 | Create a flat by giving a name, members, zones and the rotation start date | High | Implemented (https://github.com/Glinbor10/housely/issues/21[#21])
+| FR-02 | The created flat opens automatically on later visits | High | Implemented (https://github.com/Glinbor10/housely/issues/21[#21])
+| FR-03 | Join a flat with an invite code and choose who you are | High | Implemented (https://github.com/Glinbor10/housely/issues/22[#22])
+| FR-04 | See this week's zone assignment, highlighting your own | High | Implemented
+| FR-05 | Mark a zone as done with a date, today by default and editable | High | Implemented
+| FR-06 | Automatic, fair rotation every week, with any number of members and zones | High | Implemented
+| FR-07 | View the history by zone and member | Medium | https://github.com/Glinbor10/housely/issues/25[#25]
+| FR-08 | Edit zones and members without losing the history | Medium | https://github.com/Glinbor10/housely/issues/25[#25]
+| FR-09 | Button to open the Tricount expenses with a configurable link | Medium | Implemented (https://github.com/Glinbor10/housely/issues/23[#23])
+| FR-10 | All members see the same state in real time | High | Implemented (https://github.com/Glinbor10/housely/issues/21[#21])
+| FR-11 | Recover access: the owner releases a member whose device was lost, and that member joins again with the code | High | Implemented (https://github.com/Glinbor10/housely/issues/61[#61])
+|===
+
+== Non-functional requirements
+
+[cols="1,4,1",options="header"]
+|===
+| ID | Description | Issue
+
+| NFR-01 | Works on Android and iOS as an installable PWA | https://github.com/Glinbor10/housely/issues/24[#24]
+| NFR-02 | Only the members of a flat can read or modify its data | https://github.com/Glinbor10/housely/issues/16[#16]
+| NFR-03 | Zero infrastructure cost | Spark plan
+| NFR-04 | Basic accessibility (WCAG) and texts in Spanish and English | https://github.com/Glinbor10/housely/issues/26[#26]
+| NFR-05 | Domain free of UI and storage dependencies, verified with architecture tests | https://github.com/Glinbor10/housely/issues/11[#11]
+| NFR-06 | Every change passes lint, formatting, types, tests and build before merging | https://github.com/Glinbor10/housely/pull/28[#28]
+| NFR-07 | Works offline: opens the flat from the cache and queues what is marked until the network is back | Implemented
+| NFR-08 | Security headers and a strict content policy with no violations | Implemented (https://github.com/Glinbor10/housely/issues/41[#41])
+|===

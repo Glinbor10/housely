@@ -80,7 +80,7 @@ jobs:
 
       # Rules and indexes go out before the tests that depend on them. Controlled by the repository
       # variable FIRESTORE_DEPLOY_ENABLED: the service account needs the Firebase Rules Admin and
-      # Cloud Datastore Index Admin roles (see docs/gco/gestion-configuracion.adoc).
+      # Cloud Datastore Index Admin roles (see docs/configuration-management/configuration-management.adoc).
       - name: Deploy Firestore rules and indexes
         if: ${{ env.HAS_FIREBASE == 'true' && vars.FIRESTORE_DEPLOY_ENABLED == 'true' }}
         env:

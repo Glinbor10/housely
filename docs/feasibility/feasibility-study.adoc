@@ -1,0 +1,32 @@
+= EVS: Feasibility study
+:toc:
+:lang: en
+
+== Need
+Three flatmates want to organize the cleaning of the living room, kitchen and bathroom with a fair weekly rotation, know who cleaned and when, and keep the flat's expenses at hand in Tricount.
+
+== Scope
+*Included:* create a flat (members, zones, start date), join with a code, see what is due this week, mark as done with a date, history, Tricount link, use on Android and iOS.
+
+*Out of scope (for now):* real Tricount integration (it has no public API), own expense management, Google account login.
+
+== Alternatives studied
+
+[cols="2,3,3",options="header"]
+|===
+| Decision | Options | Chosen and reason
+
+| Platform | Native app (Expo/Flutter), PWA | *PWA*: free, a single codebase, no stores and no $99/year iOS fee
+| Persistence | Local only, Firebase, Supabase | *Firebase*: real time, free tier is enough, no own server
+| Tricount | API, import an export, link | *Link*: Tricount offers no public API; developer access is requested in case that changes
+| Identity | Pick a name, Google login | *Pick a name* now; Google as a future improvement
+|===
+
+== Cost
+€0 on the Firebase free plan (Spark) and GitHub. No card.
+
+== Main risks
+See the link:../project-management/project-plan.adoc[project plan].
+
+== Conclusion
+Feasible, low risk and zero cost.
