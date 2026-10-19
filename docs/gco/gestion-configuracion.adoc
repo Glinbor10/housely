@@ -20,3 +20,10 @@
 
 == Elementos de configuración
 Código fuente, workflows, reglas de Firestore (próximamente), documentación en `docs/` y plantillas de GitHub.
+
+== Despliegue de reglas de Firestore desde la CI
+Las reglas y los índices (`firestore/`) se despliegan desde los workflows, antes de las pruebas que dependen de ellos: en cada PR y en cada merge a `main` hacia `housely-ci`, y en la release hacia `housely-prod`.
+
+* Se activa con la variable de repositorio `FIRESTORE_DEPLOY_ENABLED=true`.
+* La cuenta de servicio de cada entorno (`FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI` y `..._PROD`) necesita, además de Firebase Hosting Admin, los roles *Firebase Rules Admin* y *Cloud Datastore Index Admin* (Google Cloud, IAM).
+* Las PRs despliegan sus reglas en el entorno CI compartido: es un entorno de pruebas y las reglas finales son siempre las de `main`, que se redespliegan en cada merge.
