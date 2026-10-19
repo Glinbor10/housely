@@ -24,12 +24,23 @@
 
 PRs get a Firebase preview channel (expires in 7 days).
 
-The Firebase web config (public by design) is injected at build time from the `VITE_FIREBASE_*` variables of each GitHub Environment (`ci`, `production`). For local development copy `.env.example` to `.env.local` and fill it with the `housely-ci` values.
+The Firebase web config (public by design) is injected at build time from the `VITE_FIREBASE_*` variables of each GitHub Environment (`ci`, `production`).
+
+## Local development (new machine checklist)
+
+No credentials or secrets are needed: local work uses the Firebase emulators with fake values committed in `.env.emulators`.
+
+1. Install Node 24 and Java 21 or newer (the Firestore emulator needs it).
+2. `git clone` the repository and run `npm install`.
+3. Run `npm run dev`: it starts the Auth and Firestore emulators and the app (http://localhost:5173). The emulator panel is at http://localhost:4000, where you can inspect users and documents.
+4. Emulator data is wiped when you stop the command. The same Firestore rules as production apply.
+
+To run the app against the real `housely-ci` project instead, create `.env.ci.local` (git-ignored) with the `VITE_FIREBASE_*` values of that project and run `npm run dev:ci`.
 
 ## Commands
 
 ```bash
-npm run dev        # dev server
+npm run dev        # app + Auth and Firestore emulators
 npm test           # unit tests
 npm run lint       # oxlint
 npm run format:check # Prettier

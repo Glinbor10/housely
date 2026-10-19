@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npx -y firebase-tools@15.34.0 emulators:exec --only auth,firestore --ui --project demo-housely \"vite --mode emulators\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -12,7 +12,8 @@
     "typecheck": "tsc -b",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:rules": "npx -y firebase-tools@15.34.0 emulators:exec --only firestore --project demo-housely \"vitest run --config firestore/vitest.config.ts\""
+    "test:rules": "npx -y firebase-tools@15.34.0 emulators:exec --only firestore --project demo-housely \"vitest run --config firestore/vitest.config.ts\"",
+    "dev:ci": "vite --mode ci"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
