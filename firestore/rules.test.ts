@@ -130,6 +130,24 @@ describe('flats', () => {
   })
 })
 
+describe('tricount link', () => {
+  it('accepts https links on tricount.com and its subdomains', async () => {
+    await seedFlat()
+    const flat = doc(db(OWNER), `flats/${FLAT}`)
+    await assertSucceeds(updateDoc(flat, { tricountUrl: 'https://tricount.com/tABC' }))
+    await assertSucceeds(updateDoc(flat, { tricountUrl: 'https://app.tricount.com/tABC?x=1' }))
+  })
+
+  it('rejects other hosts, look-alike hosts and plain http', async () => {
+    await seedFlat()
+    const flat = doc(db(OWNER), `flats/${FLAT}`)
+    await assertFails(updateDoc(flat, { tricountUrl: 'https://evil.com/tABC' }))
+    await assertFails(updateDoc(flat, { tricountUrl: 'https://tricount.com.evil.com/x' }))
+    await assertFails(updateDoc(flat, { tricountUrl: 'https://eviltricount.com/x' }))
+    await assertFails(updateDoc(flat, { tricountUrl: 'http://tricount.com/x' }))
+  })
+})
+
 describe('joining a flat', () => {
   it('lets a signed-in user claim an unclaimed member and create their membership', async () => {
     await seedFlat()

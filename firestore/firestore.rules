@@ -41,7 +41,7 @@ service cloud.firestore {
         && data.startDate is string && data.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && data.zones is list && data.zones.size() >= 1 && data.zones.size() <= 20
         && isShortText(data.inviteCode, 12)
-        && (!('tricountUrl' in data) || (data.tricountUrl is string && data.tricountUrl.size() <= 300 && data.tricountUrl.matches('^https://.*')));
+        && (!('tricountUrl' in data) || (data.tricountUrl is string && data.tricountUrl.size() <= 300 && data.tricountUrl.matches('^https://([a-z0-9-]+\\.)*tricount\\.com(/.*)?$')));
     }
 
     function isValidMember(data) {

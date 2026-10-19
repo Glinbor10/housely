@@ -7,7 +7,7 @@ La asignación de zonas *no se guarda*: se calcula con `miembro = miembros[(sema
 [source]
 ----
 flats/{flatId}
-  name, startDate, zones[], tricountUrl, inviteCode, createdAt
+  name, startDate, zones[], tricountUrl (opcional, solo https en tricount.com), inviteCode, createdAt
 flats/{flatId}/members/{memberId}
   name, color, uid (identidad anónima que lo reclamó, o null), active, order (posición en la rotación)
 flats/{flatId}/users/{uid}

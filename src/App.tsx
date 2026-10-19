@@ -11,6 +11,7 @@ const Home = ({ uid }: { uid: string }) => {
 
   return session ? (
     <FlatScreen
+      uid={uid}
       session={session}
       onLeave={() => {
         clearSession(getBrowserStorage())
