@@ -1,0 +1,25 @@
+name: Issue Automation
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  assign:
+    name: Assign the creator (the repo owner for bots)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue
+            const assignee = issue.user.type === 'Bot' ? context.repo.owner : issue.user.login
+            if (issue.assignees.length > 0) return
+            await github.rest.issues.addAssignees({
+              ...context.repo,
+              issue_number: issue.number,
+              assignees: [assignee],
+            })
