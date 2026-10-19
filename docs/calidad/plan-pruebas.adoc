@@ -1,0 +1,48 @@
+= Calidad: plan de pruebas y trazabilidad
+:toc:
+:lang: es
+
+== Niveles de prueba
+
+[cols="2,3,3",options="header"]
+|===
+| Nivel | Qué verifica | Comando y fichero
+| Unitarias del dominio | Rotación, equidad, completados, validación de pisos, enlace de Tricount | `npm test`, `src/domain/*.test.ts`
+| Componentes | Formularios y pantallas con Testing Library | `npm test`, `src/components/*.test.tsx`
+| Arquitectura | Las capas no dependen unas de otras ni hay ciclos | `npm test`, `src/architecture.test.ts` (ArchUnitTS)
+| Reglas de Firestore | Quién puede leer y escribir qué, con el emulador | `npm run test:rules`, `firestore/rules.test.ts`
+| Capa de datos | Operaciones sobre Firestore con las reglas reales | `npm run test:rules`, `src/firebase/*.emulator.test.ts`
+| Aplicación completa | Crear piso, marcar y reabrir contra los emuladores | `npm run test:rules`, `src/App.emulator.test.tsx`
+| Extremo a extremo | Navegador real: Android (Chromium) e iPhone (WebKit) contra el entorno desplegado | `npm run e2e`, `e2e/*.spec.ts`
+|===
+
+Umbrales: cobertura de las capas de lógica con mínimo del 90 % de líneas, funciones y sentencias y del 85 % de ramas (`npm run test:coverage`).
+
+== Matriz de trazabilidad: requisitos a pruebas
+
+[cols="1,3,5",options="header"]
+|===
+| Requisito | Descripción | Pruebas que lo cubren
+| RF-01, RF-02 | Crear piso y reabrirlo | `flat.test.ts`, `CreateFlatForm.test.tsx`, `flatRepository.emulator.test.ts` (createFlat), `App.emulator.test.tsx`, `session.test.ts`, e2e `flat.spec.ts` (crear y recordar)
+| RF-03 | Unirse con código | `JoinFlat.test.tsx`, `flatRepository.emulator.test.ts` (findFlatIdByCode, joinFlat), reglas (joining a flat), e2e (unirse desde otro móvil, código inexistente)
+| RF-04, RF-06 | Semana actual y rotación | `rotation.test.ts` (incluida la propiedad de equidad y las personas libres), `ThisWeek.test.tsx`
+| RF-05 | Marcar como hecho | `completions.test.ts`, `ThisWeek.test.tsx`, reglas (completions), e2e (marcar y sincronizar)
+| RF-07, RF-08 | Historial y edición | Pendientes (milestone v0.2)
+| RF-09 | Enlace de Tricount | `tricount.test.ts`, `TricountLink.test.tsx`, reglas (tricount link), e2e (http rechazado, https abre en pestaña nueva)
+| RF-10 | Estado en tiempo real | `flatRepository.emulator.test.ts` (suscripciones), e2e (sincronización en ambos sentidos)
+| RF-11 | Recuperar el acceso (liberar a una persona) | Reglas (releasing a flatmate), `flatRepository.emulator.test.ts` (releaseMember), `MembersList.test.tsx`, e2e (liberar y volver a unirse)
+| RNF-01 | PWA instalable en Android e iOS | `manifest.test.ts`, `icons.test.mjs`, `installHint.test.ts`, `InstallHint.test.tsx`, e2e `mobile.spec.ts`
+| RNF-02 | Solo los miembros acceden a su piso | `firestore/rules.test.ts` completo
+| RNF-04 | Accesibilidad y uso móvil | `theme.test.ts` (objetivos táctiles de 44 px), e2e (sin scroll horizontal, modo oscuro). Textos en dos idiomas: pendiente
+| RNF-05 | Arquitectura por capas | `architecture.test.ts`
+| RNF-06 | Calidad de cada cambio | Pipeline de PR: lint, formato, tipos, pruebas, cobertura, build y pruebas de navegador
+| RNF-07 | Funciona sin conexión | e2e (abrir sin red y encolar un completado), `manifest.test.ts`
+| RNF-08 | Seguridad de la web | `hosting-headers.test.mjs`, e2e (cabeceras y ninguna violación de CSP)
+|===
+
+== Pruebas manuales antes de cada release
+Las que no se pueden automatizar del todo:
+
+. Instalar la aplicación en un iPhone real (Safari) y en un Android real, y abrir el piso sin conexión.
+. Recibir el aviso de instalación en iPhone y comprobar que desaparece al descartarlo.
+. Comprobar a ojo el aspecto en modo claro y oscuro.

@@ -20,4 +20,7 @@ Se realizan en `housely-ci` por los tres compañeros antes de lanzar una release
 |===
 
 == Guía de usuario
-Instrucciones de instalación y uso para los compañeros, en el README de usuario (pendiente del milestone v0.2).
+Ver link:manual-usuario.adoc[el manual de usuario] y link:versionado-y-release.adoc[el versionado y el procedimiento de release].
+
+== Automatización de las pruebas de aceptación
+PA-01 a PA-04 están automatizadas como pruebas de navegador real en Android y iPhone (`e2e/`) y se ejecutan en cada PR y en cada merge; PA-05 está cubierta por las pruebas de reglas. Siguen siendo manuales la instalación en un iPhone y un Android físicos.

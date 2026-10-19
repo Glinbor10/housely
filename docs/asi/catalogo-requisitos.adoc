@@ -8,16 +8,17 @@
 |===
 | ID | Descripción | Prioridad | Issue
 
-| RF-01 | Crear un piso indicando nombre, personas, zonas y fecha de inicio de la rotación | Alta | https://github.com/Glinbor10/housely/issues/21[#21]
-| RF-02 | El piso creado se abre automáticamente en los accesos siguientes | Alta | https://github.com/Glinbor10/housely/issues/21[#21]
-| RF-03 | Unirse a un piso con un código de invitación y elegir quién eres | Alta | https://github.com/Glinbor10/housely/issues/22[#22]
+| RF-01 | Crear un piso indicando nombre, personas, zonas y fecha de inicio de la rotación | Alta | Implementado (https://github.com/Glinbor10/housely/issues/21[#21])
+| RF-02 | El piso creado se abre automáticamente en los accesos siguientes | Alta | Implementado (https://github.com/Glinbor10/housely/issues/21[#21])
+| RF-03 | Unirse a un piso con un código de invitación y elegir quién eres | Alta | Implementado (https://github.com/Glinbor10/housely/issues/22[#22])
 | RF-04 | Ver la asignación de zonas de la semana actual, resaltando las propias | Alta | Implementado
 | RF-05 | Marcar una zona como hecha con fecha, por defecto hoy y editable | Alta | Implementado
 | RF-06 | Rotación automática y justa cada semana, con cualquier número de personas y zonas | Alta | Implementado
 | RF-07 | Consultar el historial por zona y persona | Media | https://github.com/Glinbor10/housely/issues/25[#25]
 | RF-08 | Editar zonas y personas sin perder el historial | Media | https://github.com/Glinbor10/housely/issues/25[#25]
-| RF-09 | Botón de acceso a los gastos de Tricount con enlace configurable | Media | https://github.com/Glinbor10/housely/issues/23[#23]
-| RF-10 | Todos los miembros ven el mismo estado en tiempo real | Alta | https://github.com/Glinbor10/housely/issues/21[#21]
+| RF-09 | Botón de acceso a los gastos de Tricount con enlace configurable | Media | Implementado (https://github.com/Glinbor10/housely/issues/23[#23])
+| RF-10 | Todos los miembros ven el mismo estado en tiempo real | Alta | Implementado (https://github.com/Glinbor10/housely/issues/21[#21])
+| RF-11 | Recuperar el acceso: el propietario libera a una persona cuyo dispositivo se perdió, y esta se une de nuevo con el código | Alta | Implementado (https://github.com/Glinbor10/housely/issues/61[#61])
 |===
 
 == Requisitos no funcionales
@@ -32,4 +33,6 @@
 | RNF-04 | Accesibilidad básica (WCAG) y textos en español e inglés | https://github.com/Glinbor10/housely/issues/26[#26]
 | RNF-05 | Dominio sin dependencias de UI ni de almacenamiento, verificado con tests de arquitectura | https://github.com/Glinbor10/housely/issues/11[#11]
 | RNF-06 | Cada cambio pasa lint, formato, tipos, pruebas y build antes de mergearse | https://github.com/Glinbor10/housely/pull/28[#28]
+| RNF-07 | Funciona sin conexión: abre el piso desde la caché y encola lo que se marque hasta recuperar la red | Implementado
+| RNF-08 | Cabeceras de seguridad y política de contenido estricta sin violaciones | Implementado (https://github.com/Glinbor10/housely/issues/41[#41])
 |===
