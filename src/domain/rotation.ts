@@ -30,3 +30,14 @@ export const getAssignments = <TMember, TZone>(
         zone,
         member: members[(weekIndex + zoneIndex) % members.length],
       }))
+
+// People without a zone this week (only possible when there are more people than zones).
+// Everybody rests once per cycle, so the work is split evenly.
+export const getRestingMembers = <TMember>(
+  members: TMember[],
+  zones: unknown[],
+  weekIndex: number,
+): TMember[] => {
+  const assigned = new Set(zones.map((_, zoneIndex) => (weekIndex + zoneIndex) % members.length))
+  return members.filter((_, memberIndex) => !assigned.has(memberIndex))
+}

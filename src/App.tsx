@@ -1,58 +1,31 @@
 import { useState } from 'react'
-import { Container, MenuItem, Stack, TextField, Typography } from '@mui/material'
-import { markDone, toIsoDate, type Completion } from './domain/completions'
-import { getAssignments, getWeekIndex } from './domain/rotation'
-import { loadState, saveState, type AppState } from './storage/localState'
-import { ThisWeek } from './components/ThisWeek'
+import { Container } from '@mui/material'
+import { AuthGate } from './screens/AuthGate'
+import { FlatScreen } from './screens/FlatScreen'
+import { OnboardingScreen } from './screens/OnboardingScreen'
+import { clearSession, getBrowserStorage, loadSession, type Session } from './storage/session'
 
-const App = () => {
-  const [state, setState] = useState<AppState>(loadState)
-  // Captured once on mount: keeps render pure and the date stable while the screen is open.
-  const [now] = useState(() => new Date())
-  const { household, completions, currentMember } = state
+const Home = ({ uid }: { uid: string }) => {
+  // The flat of this device is remembered, so the app opens on it next time
+  const [session, setSession] = useState<Session | null>(() => loadSession(getBrowserStorage()))
 
-  const weekIndex = getWeekIndex(new Date(`${household.startDate}T00:00:00`), now)
-  const assignments = getAssignments(household.members, household.zones, weekIndex)
-
-  // Persist inside the handler instead of an effect.
-  const update = (next: AppState) => {
-    saveState(next)
-    setState(next)
-  }
-
-  return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Stack spacing={2}>
-        <Typography variant="h4">Housely</Typography>
-        <Typography color="text.secondary">
-          {household.name} · week {weekIndex + 1}
-        </Typography>
-        <TextField
-          select
-          size="small"
-          label="I am"
-          value={currentMember}
-          onChange={(event) => update({ ...state, currentMember: event.target.value })}
-        >
-          {household.members.map((member) => (
-            <MenuItem key={member} value={member}>
-              {member}
-            </MenuItem>
-          ))}
-        </TextField>
-        <ThisWeek
-          weekIndex={weekIndex}
-          assignments={assignments}
-          completions={completions}
-          currentMember={currentMember}
-          today={toIsoDate(now)}
-          onMarkDone={(entry: Completion) =>
-            update({ ...state, completions: markDone(completions, entry) })
-          }
-        />
-      </Stack>
-    </Container>
+  return session ? (
+    <FlatScreen
+      session={session}
+      onLeave={() => {
+        clearSession(getBrowserStorage())
+        setSession(null)
+      }}
+    />
+  ) : (
+    <OnboardingScreen uid={uid} onDone={setSession} />
   )
 }
+
+const App = () => (
+  <Container maxWidth="sm" sx={{ py: 3 }}>
+    <AuthGate>{(uid) => <Home uid={uid} />}</AuthGate>
+  </Container>
+)
 
 export default App
