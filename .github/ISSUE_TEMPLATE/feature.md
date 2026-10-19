@@ -2,6 +2,7 @@
 name: Feature
 about: Propose a new capability
 labels: enhancement
+assignees: Glinbor10
 ---
 
 ## Context

@@ -2,6 +2,7 @@
 name: Bug
 about: Something does not work as expected
 labels: bug
+assignees: Glinbor10
 ---
 
 ## What happened
