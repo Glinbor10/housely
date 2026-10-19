@@ -51,6 +51,18 @@ jobs:
           projectId: ${{ vars.FIREBASE_PROJECT_CI }}
           expires: 7d
 
+      # Rules and indexes go out before the tests that depend on them. Controlled by the repository
+      # variable FIRESTORE_DEPLOY_ENABLED: the service account needs the Firebase Rules Admin and
+      # Cloud Datastore Index Admin roles (see docs/gco/gestion-configuracion.adoc).
+      - name: Deploy Firestore rules and indexes
+        if: ${{ env.HAS_FIREBASE == 'true' && vars.FIRESTORE_DEPLOY_ENABLED == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI }}
+        run: |
+          echo "$SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/service-account.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"             npx -y firebase-tools@15.34.0 deploy --only firestore --non-interactive             --project "${{ vars.FIREBASE_PROJECT_CI }}"
+          rm -f "$RUNNER_TEMP/service-account.json"
+
       - name: Install the browsers for the end-to-end tests
         if: ${{ env.HAS_FIREBASE == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: npx playwright install --with-deps chromium webkit
