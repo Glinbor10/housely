@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:rules": "npx -y firebase-tools@15.34.0 emulators:exec --only firestore --project demo-housely \"vitest run --config firestore/vitest.config.ts\""
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -21,11 +22,13 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "archunit": "^2.5.4",
+    "firebase": "^13.0.0",
     "oxlint": "^1.81.0",
     "prettier": "^3.9.10",
     "typescript": "~7.0.2",

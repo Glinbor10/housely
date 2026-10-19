@@ -9,7 +9,9 @@ La asignación de zonas *no se guarda*: se calcula con `miembro = miembros[(sema
 flats/{flatId}
   name, startDate, zones[], tricountUrl, inviteCode, createdAt
 flats/{flatId}/members/{memberId}
-  name, color, uid (identidad anónima que lo reclamó), active
+  name, color, uid (identidad anónima que lo reclamó, o null), active
+flats/{flatId}/users/{uid}
+  memberId (membresía: enlaza una identidad anónima con su persona)
 flats/{flatId}/completions/{weekIndex}_{zone}
   weekIndex, zone, memberId, doneAt (AAAA-MM-DD)
 inviteCodes/{code}
@@ -22,7 +24,16 @@ inviteCodes/{code}
 * `uid` enlaza un miembro con la identidad anónima de su dispositivo.
 
 == Reglas de acceso (RNF-02)
-. Solo quien tiene un `member` con su `uid` en el piso puede leer o escribir el piso.
-. Cualquier usuario autenticado puede leer un `inviteCode` concreto, pero no listarlos.
-. Un miembro solo puede crear completados de zonas que le tocan o corregir los propios.
-Se verifican con tests en el emulador de Firestore (issue https://github.com/Glinbor10/housely/issues/16[#16]).
+Implementadas en `firestore/firestore.rules` y verificadas con tests en el emulador (`npm run test:rules`).
+
+. Un usuario es *miembro* de un piso si existe `flats/{flatId}/users/{uid}`. Solo los miembros leen el piso y sus completados.
+. Crear un piso: cualquier usuario autenticado, que queda como propietario (`ownerUid`, inmutable). Nunca se puede borrar un piso, ni sus personas (se desactivan con `active`).
+. Unirse: el usuario reclama una persona sin reclamar (`uid == null`) y crea su membresía en el mismo lote. No se puede reclamar una persona ya reclamada.
+. Solo el propietario edita el piso y añade o modifica personas.
+. Completados: un miembro solo registra, corrige o borra los suyos, de una zona existente, con fecha válida y un identificador `semana_zona`.
+. Códigos de invitación: se pueden leer, no listar.
+
+=== Concesión consciente
+Los nombres de las personas (`members`) son legibles por cualquier usuario autenticado, para que quien se une pueda elegir el suyo antes de ser miembro. El identificador del piso es aleatorio y solo se obtiene a través del código de invitación. El resto de datos del piso no se expone.
+
+Issue https://github.com/Glinbor10/housely/issues/16[#16].

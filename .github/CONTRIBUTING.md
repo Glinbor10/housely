@@ -33,6 +33,7 @@ npm run lint       # oxlint
 npm run format:check # Prettier
 npm run typecheck  # TypeScript
 npm run build      # production build
+npm run test:rules # Firestore rules tests (needs Java for the emulator)
 ```
 
 ## License

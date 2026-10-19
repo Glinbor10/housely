@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function flatPath(flatId) {
+      return /databases/$(database)/documents/flats/$(flatId);
+    }
+
+    // A user is a member when a membership document exists under their uid.
+    function isMember(flatId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/flats/$(flatId)/users/$(request.auth.uid));
+    }
+
+    function memberIdOf(flatId) {
+      return get(/databases/$(database)/documents/flats/$(flatId)/users/$(request.auth.uid)).data.memberId;
+    }
+
+    function isOwner(flatId) {
+      return signedIn() && get(flatPath(flatId)).data.ownerUid == request.auth.uid;
+    }
+
+    // Used in writes that create the flat and its members in the same batch.
+    function isOwnerAfter(flatId) {
+      return signedIn() && getAfter(flatPath(flatId)).data.ownerUid == request.auth.uid;
+    }
+
+    function isShortText(value, max) {
+      return value is string && value.size() >= 1 && value.size() <= max;
+    }
+
+    function isValidFlat(data) {
+      return data.keys().hasOnly(['name', 'startDate', 'zones', 'tricountUrl', 'inviteCode', 'ownerUid', 'createdAt'])
+        && data.keys().hasAll(['name', 'startDate', 'zones', 'inviteCode', 'ownerUid'])
+        && isShortText(data.name, 60)
+        && data.startDate is string && data.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.zones is list && data.zones.size() >= 1 && data.zones.size() <= 20
+        && isShortText(data.inviteCode, 12)
+        && (!('tricountUrl' in data) || (data.tricountUrl is string && data.tricountUrl.size() <= 300 && data.tricountUrl.matches('^https://.*')));
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasOnly(['name', 'color', 'uid', 'active'])
+        && data.keys().hasAll(['name', 'uid', 'active'])
+        && isShortText(data.name, 40)
+        && data.active is bool
+        && (data.uid == null || data.uid == request.auth.uid);
+    }
+
+    function isValidCompletion(flatId, completionId, data) {
+      return data.keys().hasOnly(['weekIndex', 'zone', 'memberId', 'doneAt'])
+        && data.weekIndex is int && data.weekIndex >= 0
+        && isShortText(data.zone, 60)
+        && data.zone in get(flatPath(flatId)).data.zones
+        && completionId == string(data.weekIndex) + '_' + data.zone
+        && data.memberId == memberIdOf(flatId)
+        && data.doneAt is string && data.doneAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    match /flats/{flatId} {
+      // Flats are fetched by id; listing them is never allowed.
+      allow get: if isMember(flatId);
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && isValidFlat(request.resource.data);
+      allow update: if isOwner(flatId)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && isValidFlat(request.resource.data);
+      allow delete: if false;
+
+      // Membership: links an anonymous uid with the member it claimed.
+      match /users/{uid} {
+        allow get: if isMember(flatId);
+        allow list: if false;
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['memberId'])
+          && request.resource.data.memberId is string
+          && getAfter(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId)).data.uid == request.auth.uid
+          && (
+            // Flat creator: the member is created in the same batch.
+            !exists(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId))
+            // Joiner: the member was unclaimed before the batch.
+            || get(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId)).data.uid == null
+          );
+        allow update, delete: if false;
+      }
+
+      // Member names are readable by any signed-in user so a joiner can pick theirs.
+      // The flat id is a random id only reachable through an invite code.
+      match /members/{memberId} {
+        allow read: if signedIn();
+        allow create: if isOwnerAfter(flatId) && isValidMember(request.resource.data);
+        allow update: if (
+            // The owner edits a member without reassigning its uid.
+            isOwner(flatId)
+            && request.resource.data.uid == resource.data.uid
+            && isValidMember(request.resource.data)
+          ) || (
+            // A joiner claims an unclaimed member.
+            signedIn()
+            && resource.data.uid == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid'])
+            && request.resource.data.uid == request.auth.uid
+          );
+        allow delete: if false;
+      }
+
+      match /completions/{completionId} {
+        allow read: if isMember(flatId);
+        allow create, update: if isMember(flatId)
+          && isValidCompletion(flatId, completionId, request.resource.data);
+        allow delete: if isMember(flatId)
+          && resource.data.memberId == memberIdOf(flatId);
+      }
+    }
+
+    // The invite code is the capability to find a flat. It can be read but never listed.
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['flatId', 'ownerUid'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && getAfter(flatPath(request.resource.data.flatId)).data.ownerUid == request.auth.uid
+        && getAfter(flatPath(request.resource.data.flatId)).data.inviteCode == code;
+      allow update, delete: if false;
+    }
+  }
+}
