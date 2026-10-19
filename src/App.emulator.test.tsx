@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { deleteApp } from 'firebase/app'
 import { terminate } from 'firebase/firestore'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 // Whole app against the Auth and Firestore emulators with the production rules: `npm run test:rules`.
 beforeAll(() => {
@@ -17,9 +17,11 @@ beforeAll(() => {
 })
 
 // The app keeps Firestore listeners open: close them so the next suite can clear the emulator.
-afterAll(async () => {
-  const { cleanup } = await import('@testing-library/react')
+afterEach(() => {
   cleanup()
+})
+
+afterAll(async () => {
   const { getFirebase } = await import('./firebase/app')
   const { app, db } = getFirebase()
   await terminate(db)
@@ -52,6 +54,13 @@ describe('App', () => {
     await waitFor(() => expect(screen.getAllByText(/^Done \d{4}-\d{2}-\d{2}$/)).toHaveLength(1), {
       timeout: 15000,
     })
+
+    // The creator owns the flat, so they can add the Tricount link and it becomes an openable link
+    await userEvent.click(screen.getByRole('button', { name: /add tricount link/i }))
+    await userEvent.type(screen.getByLabelText('Tricount link'), 'https://tricount.com/tINTEG')
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    const link = await screen.findByRole('link', { name: /open tricount/i }, { timeout: 15000 })
+    expect(link.getAttribute('href')).toBe('https://tricount.com/tINTEG')
   }, 60000)
 
   it('opens the same flat again on the next visit', async () => {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { ThisWeek } from '../components/ThisWeek'
+import { TricountLink } from '../components/TricountLink'
 import { toIsoDate, type Completion } from '../domain/completions'
 import { getAssignments, getRestingMembers, getWeekIndex } from '../domain/rotation'
 import { getFirebase } from '../firebase/app'
@@ -8,6 +9,7 @@ import {
   saveCompletion,
   subscribeCompletions,
   subscribeFlat,
+  setTricountUrl,
   subscribeMembers,
   type CompletionRecord,
   type FlatRecord,
@@ -17,11 +19,12 @@ import { useSubscription } from '../hooks/useSubscription'
 import type { Session } from '../storage/session'
 
 interface FlatScreenProps {
+  uid: string
   session: Session
   onLeave: () => void
 }
 
-export const FlatScreen = ({ session, onLeave }: FlatScreenProps) => {
+export const FlatScreen = ({ uid, session, onLeave }: FlatScreenProps) => {
   const { db } = getFirebase()
   const { flatId } = session
   const flat = useSubscription<FlatRecord | null>(
@@ -42,6 +45,8 @@ export const FlatScreen = ({ session, onLeave }: FlatScreenProps) => {
   // Captured once: keeps render pure and the date stable while the screen is open
   const [now] = useState(() => new Date())
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [tricountBusy, setTricountBusy] = useState(false)
+  const [tricountError, setTricountError] = useState<string | null>(null)
 
   const failure = flat.error ?? members.error ?? completions.error
   const leave = (
@@ -68,8 +73,22 @@ export const FlatScreen = ({ session, onLeave }: FlatScreenProps) => {
       members={members.value}
       completions={completions.value}
       session={session}
+      isOwner={flat.value.ownerUid === uid}
       now={now}
       saveError={saveError}
+      tricountBusy={tricountBusy}
+      tricountError={tricountError}
+      onSaveTricount={async (url) => {
+        setTricountBusy(true)
+        setTricountError(null)
+        try {
+          await setTricountUrl(db, flatId, url)
+        } catch (error) {
+          setTricountError(error instanceof Error ? error.message : 'Could not save. Try again.')
+        } finally {
+          setTricountBusy(false)
+        }
+      }}
       onSave={async (record) => {
         setSaveError(null)
         try {
@@ -88,8 +107,12 @@ interface FlatContentProps {
   members: MemberRecord[]
   completions: CompletionRecord[]
   session: Session
+  isOwner: boolean
   now: Date
   saveError: string | null
+  tricountBusy: boolean
+  tricountError: string | null
+  onSaveTricount: (url: string | null) => void
   onSave: (record: CompletionRecord) => void
   leave: React.ReactNode
 }
@@ -99,8 +122,12 @@ const FlatContent = ({
   members,
   completions,
   session,
+  isOwner,
   now,
   saveError,
+  tricountBusy,
+  tricountError,
+  onSaveTricount,
   onSave,
   leave,
 }: FlatContentProps) => {
@@ -148,6 +175,13 @@ const FlatContent = ({
       {resting.length > 0 ? (
         <Typography color="text.secondary">Free this week: {resting.join(', ')}</Typography>
       ) : null}
+      <TricountLink
+        url={flat.tricountUrl}
+        canEdit={isOwner}
+        busy={tricountBusy}
+        error={tricountError}
+        onSave={onSaveTricount}
+      />
       {leave}
     </Stack>
   )
