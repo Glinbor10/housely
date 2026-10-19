@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFirebaseConfig } from './config'
+import { readFirebaseConfig, shouldUseEmulators } from './config'
 
 const validEnv = {
   VITE_FIREBASE_API_KEY: 'key',
@@ -30,5 +30,15 @@ describe('readFirebaseConfig', () => {
     expect(() => readFirebaseConfig({ ...validEnv, VITE_FIREBASE_PROJECT_ID: '' })).toThrowError(
       /VITE_FIREBASE_PROJECT_ID/,
     )
+  })
+})
+
+describe('shouldUseEmulators', () => {
+  it('is enabled only when the variable is the string true', () => {
+    expect(shouldUseEmulators({ VITE_USE_EMULATORS: 'true' })).toBe(true)
+  })
+
+  it.each([undefined, '', 'false', 'TRUE', '1'])('is disabled for %s', (value) => {
+    expect(shouldUseEmulators({ VITE_USE_EMULATORS: value })).toBe(false)
   })
 })

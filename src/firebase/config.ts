@@ -29,3 +29,7 @@ export const readFirebaseConfig = (env: Record<string, string | undefined>): Fir
     messagingSenderId: env[REQUIRED_VARIABLES.messagingSenderId]!,
   }
 }
+
+// Local development talks to the Firebase emulators instead of the cloud projects.
+export const shouldUseEmulators = (env: Record<string, string | undefined>): boolean =>
+  env.VITE_USE_EMULATORS === 'true'
