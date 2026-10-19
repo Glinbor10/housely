@@ -1,18 +1,31 @@
 # Housely
 
-Organize your shared flat: rotating weekly chores per zone, completion tracking with dates, and a quick link to your Tricount expenses.
+Organize your shared flat: weekly chores that rotate fairly between flatmates, completion tracking with dates, and a quick link to your Tricount expenses. Installable on Android and iOS as a PWA.
+
+## How the rotation works
+Assignments are computed, never stored: `member = members[(weekIndex + zoneIndex) % members.length]`.
+Adding or removing members or zones never breaks the history. Only completions are stored.
+See `src/domain/rotation.ts`.
+
+## Stack
+React + TypeScript + Vite + MUI, Firebase (Hosting, Firestore, anonymous Auth), GitHub Actions.
+
+## Environments and delivery
+- **PR**: lint, typecheck, tests, build and a Firebase preview channel.
+- **Merge to `main`**: verified build deployed to `housely-ci`.
+- **Release** (manual workflow): version derived from git tags, deployed to `housely-prod`, GitHub Release created.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and conventions.
 
 ## Development
-
 ```bash
 npm install
-npm run dev        # start the dev server
-npm test           # unit tests (Vitest)
-npm run lint       # oxlint
-npm run typecheck  # TypeScript
+npm run dev
+npm test
 ```
 
-## Rotation
+## License
+[PolyForm Noncommercial 1.0.0](LICENSE): the source is available and free for any noncommercial use. Commercial use and selling the product are reserved to the author.
 
-Assignments are computed, never stored: `member = members[(weekIndex + zoneIndex) % members.length]`.
-See `src/domain/rotation.ts`.
+## Roadmap
+Tracked in the GitHub milestones and issues of this repository.

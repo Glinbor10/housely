@@ -1,0 +1,19 @@
+docs:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md", "LICENSE"]
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "firebase.json", ".firebaserc", "firestore.*"]
+
+quality:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.test.ts", "**/*.test.tsx", ".oxlintrc.json", ".editorconfig", ".prettierrc*"]
+
+security:
+  - changed-files:
+      - any-glob-to-any-file: ["SECURITY.md", "firestore.rules"]
+
+pwa:
+  - changed-files:
+      - any-glob-to-any-file: ["public/manifest*", "src/sw*"]
