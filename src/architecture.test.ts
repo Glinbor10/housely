@@ -92,4 +92,33 @@ describe('architecture', { timeout: 60_000 }, () => {
       expect(violations).toEqual([])
     }
   })
+
+  it('keeps every layer independent from the screens', async () => {
+    const layers = [
+      'src/domain/**',
+      'src/components/**',
+      'src/storage/**',
+      'src/firebase/**',
+      'src/hooks/**',
+    ]
+    for (const folder of layers) {
+      const violations = await projectFiles()
+        .inFolder(folder)
+        .shouldNot()
+        .dependOnFiles()
+        .inFolder('src/screens/**')
+        .check()
+      expect(violations).toEqual([])
+    }
+  })
+
+  it('keeps hooks independent from components', async () => {
+    const violations = await projectFiles()
+      .inFolder('src/hooks/**')
+      .shouldNot()
+      .dependOnFiles()
+      .inFolder('src/components/**')
+      .check()
+    expect(violations).toEqual([])
+  })
 })

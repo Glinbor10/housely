@@ -43,3 +43,24 @@ export const clearSession = (storage: SessionStorage): void => {
     // Nothing to clean if storage is unavailable.
   }
 }
+
+const memory = new Map<string, string>()
+
+// Used when the browser blocks storage entirely (even reading window.localStorage can throw).
+const memoryStorage: SessionStorage = {
+  getItem: (key) => memory.get(key) ?? null,
+  setItem: (key, value) => {
+    memory.set(key, value)
+  },
+  removeItem: (key) => {
+    memory.delete(key)
+  },
+}
+
+export const getBrowserStorage = (): SessionStorage => {
+  try {
+    return window.localStorage
+  } catch {
+    return memoryStorage
+  }
+}
