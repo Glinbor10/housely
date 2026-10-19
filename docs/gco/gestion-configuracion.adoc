@@ -1,0 +1,20 @@
+= Gestión de la configuración
+:toc:
+:lang: es
+
+== Control de versiones
+* Repositorio privado `Glinbor10/housely`; `main` protegida (PR y check obligatorios, sin push directo).
+* Ramas: `feat/`, `fix/`, `chore/`, `docs/`, `ci/`.
+* Commits convencionales (`feat:`, `fix:`, `docs:`...), integrados por _squash merge_.
+
+== Versionado y entregas
+* Versión semántica derivada de los tags `vX.Y.Z`; no se versiona en `package.json`.
+* La Release Action calcula la versión siguiente, despliega a producción y publica la GitHub Release.
+
+== Entornos y configuración
+* Proyectos Firebase `housely-ci` y `housely-prod`.
+* Variables de repositorio: `FIREBASE_PROJECT_CI`, `FIREBASE_PROJECT_PROD`.
+* Secretos: `FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI` y `FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD`.
+
+== Elementos de configuración
+Código fuente, workflows, reglas de Firestore (próximamente), documentación en `docs/` y plantillas de GitHub.

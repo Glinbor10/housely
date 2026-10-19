@@ -27,5 +27,8 @@ npm test
 ## License
 [PolyForm Noncommercial 1.0.0](LICENSE): the source is available and free for any noncommercial use. Commercial use and selling the product are reserved to the author.
 
+## Documentation
+Project documentation follows a tailored Métrica v3 structure (in Spanish, AsciiDoc): see [docs/README.adoc](docs/README.adoc).
+
 ## Roadmap
 Tracked in the GitHub milestones and issues of this repository.

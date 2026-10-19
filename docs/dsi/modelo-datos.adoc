@@ -1,0 +1,28 @@
+= DSI: Modelo de datos (Firestore)
+:toc:
+:lang: es
+
+La asignación de zonas *no se guarda*: se calcula con `miembro = miembros[(semana + indiceZona) % nMiembros]`. Solo se guardan los datos que no se pueden deducir.
+
+[source]
+----
+flats/{flatId}
+  name, startDate, zones[], tricountUrl, inviteCode, createdAt
+flats/{flatId}/members/{memberId}
+  name, color, uid (identidad anónima que lo reclamó), active
+flats/{flatId}/completions/{weekIndex}_{zone}
+  weekIndex, zone, memberId, doneAt (AAAA-MM-DD)
+inviteCodes/{code}
+  flatId
+----
+
+== Decisiones de modelado
+* El identificador del completado combina semana y zona: marcar de nuevo corrige la fecha sin duplicar.
+* `active` permite dar de baja a una persona sin romper el historial.
+* `uid` enlaza un miembro con la identidad anónima de su dispositivo.
+
+== Reglas de acceso (RNF-02)
+. Solo quien tiene un `member` con su `uid` en el piso puede leer o escribir el piso.
+. Cualquier usuario autenticado puede leer un `inviteCode` concreto, pero no listarlos.
+. Un miembro solo puede crear completados de zonas que le tocan o corregir los propios.
+Se verifican con tests en el emulador de Firestore (issue https://github.com/Glinbor10/housely/issues/16[#16]).

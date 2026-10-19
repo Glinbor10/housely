@@ -1,0 +1,26 @@
+= Documentación de Housely
+:toc:
+:lang: es
+
+Documentación del proyecto adaptada (_tailoring_) de https://administracionelectronica.gob.es/[Métrica v3] a un sistema de tamaño muy pequeño: solo se mantienen los productos esenciales de cada proceso, cortos y enlazados con las issues y el código.
+
+== Mapa de Métrica v3
+
+[cols="2,3,3",options="header"]
+|===
+| Proceso / interfaz | Productos | Ubicación
+
+| EVS: Estudio de viabilidad | Alcance, alternativas, riesgos | link:evs/estudio-viabilidad.adoc[evs/]
+| ASI: Análisis | Catálogo de requisitos, casos de uso | link:asi/catalogo-requisitos.adoc[asi/]
+| DSI: Diseño | Arquitectura, modelo de datos, decisiones (ADR) | link:dsi/arquitectura.adoc[dsi/]
+| CSI: Construcción | Código, pruebas unitarias y de arquitectura | `src/`
+| IAS: Implantación y aceptación | Entornos, despliegue, pruebas de aceptación | link:ias/plan-implantacion.adoc[ias/]
+| MSI: Mantenimiento | Gestión de incidencias y versiones | link:msi/mantenimiento.adoc[msi/]
+| Gestión de proyectos | Plan, hitos y riesgos | link:gpr/plan-proyecto.adoc[gpr/]
+| Seguridad | Análisis de riesgos y protección de datos | link:seguridad/analisis-riesgos.adoc[seguridad/]
+| Aseguramiento de la calidad | Plan de calidad | link:calidad/plan-calidad.adoc[calidad/]
+| Gestión de la configuración | Ramas, versionado, entornos | link:gco/gestion-configuracion.adoc[gco/]
+|===
+
+== Trazabilidad
+Cada requisito del catálogo (`RF-xx`, `RNF-xx`) se enlaza con su issue de GitHub, y cada issue con su PR. Los hitos (milestones) son las iteraciones del plan de proyecto.

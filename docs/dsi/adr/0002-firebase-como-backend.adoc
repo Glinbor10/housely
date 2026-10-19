@@ -1,0 +1,10 @@
+= ADR-0002: Firebase como backend gestionado
+:lang: es
+
+*Estado:* aceptada
+
+*Contexto:* hace falta compartir estado en tiempo real entre móviles, sin mantener un servidor.
+
+*Decisión:* Firebase (Hosting, Firestore y Auth anónima), con dos proyectos: `housely-ci` y `housely-prod`.
+
+*Consecuencias:* sin backend propio; la seguridad depende de las reglas de Firestore, que se versionan y se prueban en CI.
