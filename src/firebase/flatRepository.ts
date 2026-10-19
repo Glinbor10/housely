@@ -150,6 +150,19 @@ export const joinFlat = async (
   await batch.commit()
 }
 
+// Frees a member whose device was lost: the member is unclaimed and the old membership removed in
+// one batch, so the person can rejoin from a new phone with the invite code.
+export const releaseMember = async (
+  db: Firestore,
+  input: { flatId: string; memberId: string; uid: string },
+): Promise<void> => {
+  const flat = flatRef(db, input.flatId)
+  const batch = writeBatch(db)
+  batch.update(doc(flat, 'members', input.memberId), { uid: null })
+  batch.delete(doc(flat, 'users', input.uid))
+  await batch.commit()
+}
+
 export const subscribeFlat = (
   db: Firestore,
   flatId: string,

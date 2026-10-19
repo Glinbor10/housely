@@ -90,7 +90,12 @@ service cloud.firestore {
             // Joiner: the member was unclaimed before the batch.
             || get(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId)).data.uid == null
           );
-        allow update, delete: if false;
+        allow update: if false;
+        // Only the owner removes a membership, never their own, and only together with freeing the
+        // member in the same batch: nobody can be left without a way back in.
+        allow delete: if isOwner(flatId)
+          && uid != get(flatPath(flatId)).data.ownerUid
+          && getAfter(/databases/$(database)/documents/flats/$(flatId)/members/$(resource.data.memberId)).data.uid == null;
       }
 
       // Member names are readable by any signed-in user so a joiner can pick theirs.
@@ -99,9 +104,13 @@ service cloud.firestore {
         allow read: if signedIn();
         allow create: if isOwnerAfter(flatId) && isValidMember(request.resource.data);
         allow update: if (
-            // The owner edits a member without reassigning its uid.
+            // The owner edits a member. The uid can only be kept or released (set to null), and
+            // never for the owner's own member.
             isOwner(flatId)
-            && request.resource.data.uid == resource.data.uid
+            && (
+              request.resource.data.uid == resource.data.uid
+              || (request.resource.data.uid == null && resource.data.uid != get(flatPath(flatId)).data.ownerUid)
+            )
             && isValidMember(request.resource.data)
           ) || (
             // A joiner claims an unclaimed member.

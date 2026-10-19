@@ -14,6 +14,7 @@ import {
   findFlatIdByCode,
   joinFlat,
   listMembers,
+  releaseMember,
   saveCompletion,
   setTricountUrl,
   subscribeCompletions,
@@ -199,6 +200,40 @@ describe('joinFlat', () => {
   it('rejects claiming a member that already belongs to someone', async () => {
     const { flatId, memberId } = await create()
     await assertFails(joinFlat(db(STRANGER), { flatId, memberId, uid: STRANGER }))
+  })
+})
+
+describe('releaseMember', () => {
+  const joinBen = async () => {
+    const { flatId } = await create()
+    const members = await listMembers(db(FLATMATE), flatId)
+    const ben = members.find((member) => member.name === 'Ben') as MemberRecord
+    await joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE })
+    return { flatId, ben }
+  }
+
+  it('frees the member, removes the access of the old device and lets a new phone rejoin', async () => {
+    const { flatId, ben } = await joinBen()
+    await assertSucceeds(releaseMember(db(OWNER), { flatId, memberId: ben.id, uid: FLATMATE }))
+
+    const members = await listMembers(db(OWNER), flatId)
+    expect(members.find((member) => member.id === ben.id)?.uid).toBeNull()
+    await assertFails(
+      new Promise<void>((resolve, reject) =>
+        subscribeFlat(db(FLATMATE), flatId, () => resolve(), reject),
+      ),
+    )
+
+    await assertSucceeds(joinFlat(db(STRANGER), { flatId, memberId: ben.id, uid: STRANGER }))
+  })
+
+  it('is only allowed to the owner and never on the own member', async () => {
+    const { flatId, ben } = await joinBen()
+    await assertFails(releaseMember(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE }))
+    const owner = (await listMembers(db(OWNER), flatId)).find((member) => member.uid === OWNER)
+    await assertFails(
+      releaseMember(db(OWNER), { flatId, memberId: (owner as MemberRecord).id, uid: OWNER }),
+    )
   })
 })
 

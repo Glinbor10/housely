@@ -227,6 +227,72 @@ describe('members', () => {
   })
 })
 
+describe('releasing a flatmate', () => {
+  // Ben joined from a phone that was later lost; the owner frees the name.
+  const seedBenJoined = async () => {
+    await seedFlat()
+    await env.withSecurityRulesDisabled(async (context) => {
+      const firestore = context.firestore()
+      await updateDoc(doc(firestore, `flats/${FLAT}/members/m-free`), { uid: FLATMATE })
+      await setDoc(doc(firestore, `flats/${FLAT}/users/${FLATMATE}`), { memberId: 'm-free' })
+    })
+  }
+
+  const release = (uid: string, memberId: string, memberUid: string) => {
+    const firestore = db(uid)
+    const batch = writeBatch(firestore)
+    batch.update(doc(firestore, `flats/${FLAT}/members/${memberId}`), { uid: null })
+    batch.delete(doc(firestore, `flats/${FLAT}/users/${memberUid}`))
+    return batch.commit()
+  }
+
+  it('lets the owner free a claimed member and remove its membership', async () => {
+    await seedBenJoined()
+    await assertSucceeds(release(OWNER, 'm-free', FLATMATE))
+    await assertFails(getDoc(doc(db(FLATMATE), `flats/${FLAT}`)))
+  })
+
+  it('lets the released person claim the name again from a new identity', async () => {
+    await seedBenJoined()
+    await assertSucceeds(release(OWNER, 'm-free', FLATMATE))
+    const firestore = db('new-phone-uid')
+    const batch = writeBatch(firestore)
+    batch.update(doc(firestore, `flats/${FLAT}/members/m-free`), { uid: 'new-phone-uid' })
+    batch.set(doc(firestore, `flats/${FLAT}/users/new-phone-uid`), { memberId: 'm-free' })
+    await assertSucceeds(batch.commit())
+  })
+
+  it('rejects anyone but the owner', async () => {
+    await seedBenJoined()
+    await assertFails(release(FLATMATE, 'm-owner', OWNER))
+    await assertFails(release(STRANGER, 'm-free', FLATMATE))
+  })
+
+  it('never lets the owner release themselves', async () => {
+    await seedBenJoined()
+    await assertFails(release(OWNER, 'm-owner', OWNER))
+  })
+
+  it('does not let a member remove another membership without releasing the member', async () => {
+    await seedBenJoined()
+    await assertFails(deleteDoc(doc(db(OWNER), `flats/${FLAT}/users/${FLATMATE}`)))
+  })
+
+  it('keeps the completions made before the release', async () => {
+    await seedBenJoined()
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `flats/${FLAT}/completions/0_Kitchen`), {
+        weekIndex: 0,
+        zone: 'Kitchen',
+        memberId: 'm-free',
+        doneAt: '2026-10-13',
+      })
+    })
+    await assertSucceeds(release(OWNER, 'm-free', FLATMATE))
+    await assertSucceeds(getDoc(doc(db(OWNER), `flats/${FLAT}/completions/0_Kitchen`)))
+  })
+})
+
 describe('completions', () => {
   const completion = (memberId: string) => ({
     weekIndex: 3,
