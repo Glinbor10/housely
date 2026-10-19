@@ -64,6 +64,12 @@ describe('hosting security headers', () => {
     expect(connect).not.toContain('https:')
   })
 
+  it('never caches the service worker and its loader, so installed apps update', () => {
+    expect(headersFor('/sw.js')['Cache-Control']).toMatch(/no-cache/)
+    expect(headersFor('/registerSW.js')['Cache-Control']).toMatch(/no-cache/)
+    expect(headersFor('/manifest.webmanifest')['Cache-Control']).toMatch(/no-cache/)
+  })
+
   it('caches hashed assets as immutable and never caches the entry point', () => {
     expect(headersFor('/assets/**')['Cache-Control']).toMatch(/immutable/)
     expect(headersFor('/')['Cache-Control']).toMatch(/no-cache/)
