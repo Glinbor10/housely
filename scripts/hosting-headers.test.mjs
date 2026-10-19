@@ -66,6 +66,7 @@ describe('hosting security headers', () => {
 
   it('caches hashed assets as immutable and never caches the entry point', () => {
     expect(headersFor('/assets/**')['Cache-Control']).toMatch(/immutable/)
+    expect(headersFor('/')['Cache-Control']).toMatch(/no-cache/)
     expect(headersFor('/index.html')['Cache-Control']).toMatch(/no-cache/)
   })
 })
