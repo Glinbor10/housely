@@ -4,6 +4,11 @@
 
 Documentación del proyecto adaptada (_tailoring_) de https://administracionelectronica.gob.es/[Métrica v3] a un sistema de tamaño muy pequeño: solo se mantienen los productos esenciales de cada proceso, cortos y enlazados con las issues y el código.
 
+== Enfoque
+Métrica v3 admite dos enfoques: estructurado y orientado a objetos. Housely sigue el *enfoque orientado a objetos (UML)*: casos de uso, modelo de dominio y diagramas de secuencia.
+
+La implementación es en *TypeScript funcional*: el dominio son funciones puras (`src/domain`) y los conceptos del modelo (piso, persona, zona, completado) se implementan como tipos. UML sirve para modelar el dominio, no obliga a escribir clases.
+
 == Mapa de Métrica v3
 
 [cols="2,3,3",options="header"]
