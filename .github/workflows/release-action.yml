@@ -80,6 +80,7 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
           projectId: ${{ vars.FIREBASE_PROJECT_PROD }}
+          entryPoint: firebase
           channelId: live
 
       - name: Create GitHub Release

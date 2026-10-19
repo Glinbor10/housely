@@ -43,6 +43,7 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI }}
           projectId: ${{ vars.FIREBASE_PROJECT_CI }}
+          entryPoint: firebase
           channelId: live
 
       - name: Skip notice
