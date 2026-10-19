@@ -21,12 +21,16 @@ flowchart LR
 |===
 | Folder | Responsibility
 
-| `src/domain` | Pure logic (rotation, completions). No React or Firebase
-| `src/storage` | Data access (today `localStorage`, later Firestore)
-| `src/components` | UI with MUI
+| `src/domain` | Pure logic (rotation, completions, flat validation). No React or Firebase
+| `src/firebase` | Data layer: Firestore repository, anonymous Auth and Firebase configuration
+| `src/hooks` | React hooks that subscribe to the data layer and run actions
+| `src/storage` | Device-only state in the browser's `localStorage` (with an in-memory fallback): which flat and member this device is, and small preferences. Flat data is not stored here
+| `src/pwa` | Install-hint detection and the web app manifest
+| `src/components` | Presentational UI with MUI
+| `src/screens` | The only layer that joins the others into pages
 |===
 
-The allowed dependencies are verified with architecture tests (`src/architecture.test.ts`): the domain does not depend on components or storage, and there are no cycles.
+The allowed dependencies are verified with architecture tests (`src/architecture.test.ts`): the domain does not depend on any other layer, components do not depend on storage, Firebase or hooks, no other layer depends on screens, and there are no cycles.
 
 == Environments
 
