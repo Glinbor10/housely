@@ -24,6 +24,8 @@
 
 PRs get a Firebase preview channel (expires in 7 days).
 
+The Firebase web config (public by design) is injected at build time from the `VITE_FIREBASE_*` variables of each GitHub Environment (`ci`, `production`). For local development copy `.env.example` to `.env.local` and fill it with the `housely-ci` values.
+
 ## Commands
 
 ```bash

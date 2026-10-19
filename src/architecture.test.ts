@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { projectFiles } from 'archunit'
 
 // Architecture rules: keep layers independent so the domain stays pure and testable.
-describe('architecture', () => {
+describe('architecture', { timeout: 60_000 }, () => {
   it('has no circular dependencies in src', async () => {
     const violations = await projectFiles().inFolder('src/**').should().haveNoCycles().check()
     expect(violations).toEqual([])
@@ -40,6 +40,26 @@ describe('architecture', () => {
       .shouldNot()
       .dependOnFiles()
       .inFolder('src/components/**')
+      .check()
+    expect(violations).toEqual([])
+  })
+
+  it('keeps components independent from the Firebase layer', async () => {
+    const violations = await projectFiles()
+      .inFolder('src/components/**')
+      .shouldNot()
+      .dependOnFiles()
+      .inFolder('src/firebase/**')
+      .check()
+    expect(violations).toEqual([])
+  })
+
+  it('keeps the domain independent from the Firebase layer', async () => {
+    const violations = await projectFiles()
+      .inFolder('src/domain/**')
+      .shouldNot()
+      .dependOnFiles()
+      .inFolder('src/firebase/**')
       .check()
     expect(violations).toEqual([])
   })

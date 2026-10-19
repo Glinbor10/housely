@@ -14,6 +14,8 @@
 == Entornos y configuración
 * Proyectos Firebase `housely-ci` y `housely-prod`.
 * Variables de repositorio: `FIREBASE_PROJECT_CI`, `FIREBASE_PROJECT_PROD`.
+* Variables por entorno de GitHub (`ci`, `production`): `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` y `VITE_FIREBASE_MESSAGING_SENDER_ID`. La configuración web de Firebase es pública por diseño; la seguridad está en las reglas de Firestore.
+* Desarrollo local: `.env.local` (ignorado por git), a partir de `.env.example`.
 * Secretos: `FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI` y `FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD`.
 
 == Elementos de configuración
