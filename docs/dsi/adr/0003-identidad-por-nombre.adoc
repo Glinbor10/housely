@@ -1,0 +1,10 @@
+= ADR-0003: Identidad eligiendo el nombre
+:lang: es
+
+*Estado:* aceptada
+
+*Contexto:* son tres compañeros de confianza y no se quieren cuentas ni contraseñas.
+
+*Decisión:* autenticación anónima; al unirse, cada persona elige su nombre de la lista del piso.
+
+*Consecuencias:* simple, pero alguien podría elegir el nombre de otro. Mejora futura: login con Google para recuperar la sesión y reforzar la identidad.
