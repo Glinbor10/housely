@@ -5,5 +5,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   plugins: [react()],
   // ArchUnitTS extends Vitest through the global expect
-  test: { globals: true, exclude: ['firestore/**', 'node_modules/**'] },
+  test: {
+    globals: true,
+    exclude: ['firestore/**', 'src/**/*.emulator.test.ts', 'node_modules/**'],
+  },
 })

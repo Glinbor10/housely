@@ -54,6 +54,7 @@ export const validateDraft = (draft: FlatDraft): string[] => {
   if (draft.zones.length === 0) errors.push('zones-required')
   if (draft.zones.length > MAX_ITEMS) errors.push('zones-too-many')
   if (draft.zones.some((zone) => zone.length > MAX_ZONE_NAME)) errors.push('zone-name-too-long')
+  if (draft.zones.some((zone) => zone.includes('/'))) errors.push('zone-name-invalid')
   if (hasDuplicates(draft.zones)) errors.push('zones-duplicated')
 
   if (!isValidIsoDate(draft.startDate)) errors.push('start-date-invalid')
