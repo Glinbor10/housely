@@ -12,7 +12,7 @@
     "typecheck": "tsc -b",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:rules": "npx -y firebase-tools@15.34.0 emulators:exec --only firestore --project demo-housely \"vitest run --config firestore/vitest.config.ts\"",
+    "test:rules": "npx -y firebase-tools@15.34.0 emulators:exec --only auth,firestore --project demo-housely \"vitest run --config firestore/vitest.config.ts\"",
     "dev:ci": "vite --mode ci"
   },
   "dependencies": {

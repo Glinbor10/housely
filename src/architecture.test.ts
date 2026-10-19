@@ -63,4 +63,33 @@ describe('architecture', { timeout: 60_000 }, () => {
       .check()
     expect(violations).toEqual([])
   })
+
+  it('keeps presentational layers independent from hooks', async () => {
+    for (const folder of [
+      'src/domain/**',
+      'src/components/**',
+      'src/storage/**',
+      'src/firebase/**',
+    ]) {
+      const violations = await projectFiles()
+        .inFolder(folder)
+        .shouldNot()
+        .dependOnFiles()
+        .inFolder('src/hooks/**')
+        .check()
+      expect(violations).toEqual([])
+    }
+  })
+
+  it('keeps the domain independent from the other layers', async () => {
+    for (const folder of ['src/firebase/**', 'src/hooks/**']) {
+      const violations = await projectFiles()
+        .inFolder('src/domain/**')
+        .shouldNot()
+        .dependOnFiles()
+        .inFolder(folder)
+        .check()
+      expect(violations).toEqual([])
+    }
+  })
 })
