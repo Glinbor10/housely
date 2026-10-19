@@ -29,3 +29,6 @@ npm run lint       # oxlint
 npm run typecheck  # TypeScript
 npm run build      # production build
 ```
+
+## License
+The project uses the PolyForm Noncommercial License 1.0.0. By contributing you agree that your contribution is distributed under that license and that the author keeps the right to use it commercially.

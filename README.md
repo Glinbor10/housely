@@ -25,7 +25,7 @@ npm test
 ```
 
 ## License
-MIT, see [LICENSE](LICENSE).
+[PolyForm Noncommercial 1.0.0](LICENSE): the source is available and free for any noncommercial use. Commercial use and selling the product are reserved to the author.
 
 ## Roadmap
 Tracked in the GitHub milestones and issues of this repository.
