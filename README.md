@@ -24,5 +24,8 @@ npm run dev
 npm test
 ```
 
+## License
+MIT, see [LICENSE](LICENSE).
+
 ## Roadmap
 Tracked in the GitHub milestones and issues of this repository.
