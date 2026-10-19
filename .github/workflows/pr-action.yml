@@ -13,7 +13,7 @@ jobs:
   check:
     name: Lint, typecheck, test and build
     runs-on: ubuntu-latest
-    # Same convention as Viafirma repos: skip CI when the PR title contains [skip-ci]
+    # Skip CI when the PR title contains [skip-ci]
     if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
     env:
       # Preview deploys are skipped until the Firebase secret/variable exist.

@@ -8,12 +8,11 @@ infra:
 
 quality:
   - changed-files:
-      - any-glob-to-any-file:
-          ['**/*.test.ts', '**/*.test.tsx', '.oxlintrc.json', '.editorconfig', '.prettierrc*']
+      - any-glob-to-any-file: ['**/*.test.ts', '**/*.test.tsx', '.oxlintrc.json', '.editorconfig']
 
 security:
   - changed-files:
-      - any-glob-to-any-file: ['SECURITY.md', 'firestore.rules']
+      - any-glob-to-any-file: ['.github/SECURITY.md', 'firestore.rules']
 
 pwa:
   - changed-files:
