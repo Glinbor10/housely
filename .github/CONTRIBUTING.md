@@ -46,7 +46,8 @@ npm run lint       # oxlint
 npm run format:check # Prettier
 npm run typecheck  # TypeScript
 npm run build      # production build
-npm run test:rules # Firestore rules tests (needs Java for the emulator)
+npm run test:rules # emulator tests: Firestore rules, data layer, auth and the whole app (needs Java)
+npm run e2e        # real-browser tests on Android (Chromium) and iPhone (WebKit): set E2E_BASE_URL
 ```
 
 ## License

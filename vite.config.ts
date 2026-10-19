@@ -23,7 +23,7 @@ export default defineConfig({
   // ArchUnitTS extends Vitest through the global expect
   test: {
     globals: true,
-    exclude: ['firestore/**', 'src/**/*.emulator.test.{ts,tsx}', 'node_modules/**'],
+    exclude: ['firestore/**', 'e2e/**', 'src/**/*.emulator.test.{ts,tsx}', 'node_modules/**'],
     coverage: {
       provider: 'v8',
       // Logic layers only: the Firebase layer is covered by the emulator suite and the UI by component tests

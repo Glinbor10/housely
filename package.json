@@ -15,7 +15,8 @@
     "test:rules": "npx -y firebase-tools@15.34.0 emulators:exec --only auth,firestore --project demo-housely \"vitest run --config firestore/vitest.config.ts\"",
     "dev:ci": "vite --mode ci",
     "test:coverage": "vitest run --coverage",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "e2e": "playwright test -c e2e"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
+    "@playwright/test": "^1.64.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^26.6.5",
