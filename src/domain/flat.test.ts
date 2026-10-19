@@ -54,6 +54,10 @@ describe('validateDraft', () => {
     expect(validateDraft({ ...draft, zones: ['x'.repeat(61)] })).toContain('zone-name-too-long')
   })
 
+  it('rejects zone names with a slash: they are part of a Firestore document id', () => {
+    expect(validateDraft({ ...draft, zones: ['Bath/Toilet'] })).toContain('zone-name-invalid')
+  })
+
   it('rejects duplicated names ignoring case', () => {
     expect(validateDraft({ ...draft, members: ['Ana', 'ana'] })).toContain('members-duplicated')
     expect(validateDraft({ ...draft, zones: ['Kitchen', 'KITCHEN'] })).toContain('zones-duplicated')
