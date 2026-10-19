@@ -25,7 +25,7 @@ inviteCodes/{code}
 * `uid` enlaza un miembro con la identidad anónima de su dispositivo.
 
 == Reglas de acceso (RNF-02)
-Implementadas en `firestore/firestore.rules` y verificadas con tests en el emulador (`npm run test:rules`).
+Implementadas en `firebase/firestore/firestore.rules` y verificadas con tests en el emulador (`npm run test:rules`).
 
 . Un usuario es *miembro* de un piso si existe `flats/{flatId}/users/{uid}`. Solo los miembros leen el piso y sus completados.
 . Crear un piso: cualquier usuario autenticado, que queda como propietario (`ownerUid`, inmutable). Nunca se puede borrar un piso, ni sus personas (se desactivan con `active`).

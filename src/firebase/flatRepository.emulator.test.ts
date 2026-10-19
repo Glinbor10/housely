@@ -7,7 +7,7 @@ import {
 import { doc, setDoc, type Firestore } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { FlatDraft } from '../domain/flat'
-import rules from '../../firestore/firestore.rules?raw'
+import rules from '../../firebase/firestore/firestore.rules?raw'
 import {
   createFlat,
   deleteCompletion,

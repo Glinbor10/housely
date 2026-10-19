@@ -5,6 +5,10 @@ import { manifest } from './src/pwa/manifest.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Emulator values live in config/.env.emulators
+  envDir: 'config',
+  // Firebase only serves a directory inside the one that holds firebase.json
+  build: { outDir: 'firebase/dist' },
   plugins: [
     react(),
     VitePWA({
@@ -23,7 +27,14 @@ export default defineConfig({
   // ArchUnitTS extends Vitest through the global expect
   test: {
     globals: true,
-    exclude: ['firestore/**', 'e2e/**', 'src/**/*.emulator.test.{ts,tsx}', 'node_modules/**'],
+    // Component tests type into MUI fields one key at a time: leave room on a loaded machine
+    testTimeout: 20_000,
+    exclude: [
+      'firebase/firestore/**',
+      'e2e/**',
+      'src/**/*.emulator.test.{ts,tsx}',
+      'node_modules/**',
+    ],
     coverage: {
       provider: 'v8',
       // Logic layers only: the Firebase layer is covered by the emulator suite and the UI by component tests

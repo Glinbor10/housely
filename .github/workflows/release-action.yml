@@ -87,13 +87,14 @@ jobs:
           SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
         run: |
           echo "$SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/service-account.json"
-          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"             npx -y firebase-tools@15.34.0 deploy --only firestore --non-interactive             --project "${{ vars.FIREBASE_PROJECT_PROD }}"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"             npx -y firebase-tools@15.34.0 --config firebase/firebase.json deploy --only firestore --non-interactive             --project "${{ vars.FIREBASE_PROJECT_PROD }}"
           rm -f "$RUNNER_TEMP/service-account.json"
 
       - name: Deploy to Firebase Hosting (production project)
         if: ${{ env.HAS_FIREBASE == 'true' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
+          entryPoint: firebase
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
           projectId: ${{ vars.FIREBASE_PROJECT_PROD }}

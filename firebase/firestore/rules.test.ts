@@ -61,7 +61,7 @@ const seedFlat = () =>
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-housely',
-    firestore: { rules: readFileSync('firestore/firestore.rules', 'utf8') },
+    firestore: { rules: readFileSync('firebase/firestore/firestore.rules', 'utf8') },
   })
 })
 

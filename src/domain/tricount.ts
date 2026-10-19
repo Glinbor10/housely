@@ -2,7 +2,7 @@ export type TricountResult =
   | { ok: true; url: string | null }
   | { ok: false; reason: 'not-https' | 'not-tricount' | 'too-long' }
 
-// Mirrors the Firestore rules (firestore/firestore.rules).
+// Mirrors the Firestore rules (firebase/firestore/firestore.rules).
 const MAX_LENGTH = 300
 
 // Accepts https links on tricount.com or its subdomains and nothing else: the link is opened by every
