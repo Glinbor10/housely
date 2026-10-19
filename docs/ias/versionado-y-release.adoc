@@ -22,14 +22,14 @@ La primera versión del MVP es *`v0.1.0`*: se lanza la release con `bump = minor
 | Entorno | Proyecto Firebase | Cómo llega
 | Preview de PR | `housely-ci` (canal temporal de 7 días) | Cada PR; ejecuta pruebas de navegador reales
 | CI | `housely-ci` | Cada merge a `main`; ejecuta de nuevo las pruebas de navegador
-| Producción | `housely-prod` | Workflow manual *Release Action*, con aprobación
+| Producción | `housely-prod` | Workflow manual *Release Action*, solo lo lanza el propietario
 |===
 
 == Procedimiento de release
 . Comprobar que `main` está verde (último *Main merge* correcto) y que `housely-ci` se ve bien en un móvil Android y en un iPhone.
 . En GitHub, *Actions*, *Release Action*, *Run workflow* y elegir `patch`, `minor` o `major`.
-. El workflow *verifica* (lint, tipos, pruebas, auditoría de dependencias de producción) y se detiene esperando la *aprobación* del entorno `production`.
-. Tras aprobar: despliega las reglas de Firestore, despliega la web, ejecuta una prueba de humo que *no escribe datos* y crea el tag y la GitHub Release con sus notas.
+. El workflow *verifica* (lint, tipos, pruebas, auditoría de dependencias de producción) y despliega solo si todo pasa. Hoy la única puerta es lanzarlo a mano (solo el propietario puede) y el entorno `production` solo admite ramas protegidas. La aprobación de revisores obligatoria no está disponible en repositorios privados con el plan actual y se activará al publicar el repositorio.
+. Despliega las reglas de Firestore, despliega la web, ejecuta una prueba de humo que *no escribe datos* y crea el tag y la GitHub Release con sus notas.
 . Revisar en producción desde un móvil y comprobar la versión en la GitHub Release.
 
 == Marcha atrás (rollback)
@@ -43,4 +43,4 @@ Una vez por entorno, y de forma manual:
 . Activar la API de Firestore, crear la base de datos (modo producción, región `eur3`) y activar la autenticación anónima.
 . Restringir la clave web por dominio.
 . Dar a la cuenta de servicio los roles *Firebase Rules Admin* y *Cloud Datastore Index Admin* y fijar `FIRESTORE_DEPLOY_ENABLED=true`.
-. Exigir aprobación en el entorno `production` de GitHub.
+. Cuando el repositorio sea público, exigir aprobación de revisores en el entorno `production` de GitHub.
