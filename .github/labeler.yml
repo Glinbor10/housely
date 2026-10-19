@@ -4,7 +4,7 @@ docs:
 
 infra:
   - changed-files:
-      - any-glob-to-any-file: ['.github/**', 'firebase/**', 'firestore.*']
+      - any-glob-to-any-file: ['.github/**', 'firebase.json', '.firebaserc', 'firestore.*']
 
 quality:
   - changed-files:
