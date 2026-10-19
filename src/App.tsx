@@ -24,7 +24,13 @@ const Home = ({ uid }: { uid: string }) => {
 }
 
 const App = () => (
-  <Container maxWidth="sm" sx={{ py: 3 }}>
+  <Container
+    maxWidth="sm"
+    sx={{
+      pt: 'max(24px, env(safe-area-inset-top))',
+      pb: 'max(24px, env(safe-area-inset-bottom))',
+    }}
+  >
     <AuthGate>{(uid) => <Home uid={uid} />}</AuthGate>
   </Container>
 )

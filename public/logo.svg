@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Housely">
+  <!-- Replace this file with your own logo and run `npm run icons` to regenerate every icon. -->
+  <rect width="512" height="512" rx="112" fill="#1976d2" />
+  <path d="M96 248 L256 112 L416 248 V400 a24 24 0 0 1 -24 24 H120 a24 24 0 0 1 -24 -24 Z" fill="#ffffff" />
+  <circle cx="204" cy="290" r="18" fill="#1976d2" />
+  <circle cx="308" cy="290" r="18" fill="#1976d2" />
+  <path d="M196 350 Q256 400 316 350" fill="none" stroke="#1976d2" stroke-width="22" stroke-linecap="round" />
+</svg>
