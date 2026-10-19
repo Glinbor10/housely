@@ -68,3 +68,21 @@ test('the Content-Security-Policy and the headers are in place and nothing is bl
   await page.getByRole('button', { name: /create a flat/i }).waitFor()
   expect(problems.filter((text) => /content security policy|refused to/i.test(text))).toEqual([])
 })
+
+test('suggests installing the app on iPhone, where Safari can delete the data, and only there', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /create a flat/i }).waitFor()
+  const hint = page.getByText(/add to home screen/i)
+  if (testInfo.project.name === 'iphone') {
+    await expect(hint).toBeVisible()
+    await page.getByRole('button', { name: /got it/i }).click()
+    await expect(hint).toHaveCount(0)
+    await page.reload()
+    await page.getByRole('button', { name: /create a flat/i }).waitFor()
+    await expect(hint).toHaveCount(0)
+  } else {
+    await expect(hint).toHaveCount(0)
+  }
+})

@@ -1,20 +1,23 @@
 import { useState } from 'react'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { MembersList } from '../components/MembersList'
 import { ThisWeek } from '../components/ThisWeek'
 import { TricountLink } from '../components/TricountLink'
 import { toIsoDate, type Completion } from '../domain/completions'
 import { getAssignments, getRestingMembers, getWeekIndex } from '../domain/rotation'
 import { getFirebase } from '../firebase/app'
 import {
+  releaseMember,
   saveCompletion,
+  setTricountUrl,
   subscribeCompletions,
   subscribeFlat,
-  setTricountUrl,
   subscribeMembers,
   type CompletionRecord,
   type FlatRecord,
   type MemberRecord,
 } from '../firebase/flatRepository'
+import { useAction } from '../hooks/useAction'
 import { useSubscription } from '../hooks/useSubscription'
 import type { Session } from '../storage/session'
 
@@ -44,9 +47,9 @@ export const FlatScreen = ({ uid, session, onLeave }: FlatScreenProps) => {
   )
   // Captured once: keeps render pure and the date stable while the screen is open
   const [now] = useState(() => new Date())
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [tricountBusy, setTricountBusy] = useState(false)
-  const [tricountError, setTricountError] = useState<string | null>(null)
+  const save = useAction()
+  const tricount = useAction()
+  const release = useAction()
 
   const failure = flat.error ?? members.error ?? completions.error
   const leave = (
@@ -75,27 +78,18 @@ export const FlatScreen = ({ uid, session, onLeave }: FlatScreenProps) => {
       session={session}
       isOwner={flat.value.ownerUid === uid}
       now={now}
-      saveError={saveError}
-      tricountBusy={tricountBusy}
-      tricountError={tricountError}
-      onSaveTricount={async (url) => {
-        setTricountBusy(true)
-        setTricountError(null)
-        try {
-          await setTricountUrl(db, flatId, url)
-        } catch (error) {
-          setTricountError(error instanceof Error ? error.message : 'Could not save. Try again.')
-        } finally {
-          setTricountBusy(false)
-        }
-      }}
-      onSave={async (record) => {
-        setSaveError(null)
-        try {
-          await saveCompletion(db, flatId, record)
-        } catch (error) {
-          setSaveError(error instanceof Error ? error.message : 'Could not save. Try again.')
-        }
+      saveError={save.error}
+      tricountBusy={tricount.busy}
+      tricountError={tricount.error}
+      releaseBusy={release.busy}
+      releaseError={release.error}
+      onSaveTricount={(url) => tricount.run(() => setTricountUrl(db, flatId, url))}
+      onSave={(record) => save.run(() => saveCompletion(db, flatId, record))}
+      onRelease={(memberId) => {
+        const member = members.value.find((candidate) => candidate.id === memberId)
+        return member?.uid
+          ? release.run(() => releaseMember(db, { flatId, memberId, uid: member.uid as string }))
+          : undefined
       }}
       leave={leave}
     />
@@ -112,8 +106,11 @@ interface FlatContentProps {
   saveError: string | null
   tricountBusy: boolean
   tricountError: string | null
+  releaseBusy: boolean
+  releaseError: string | null
   onSaveTricount: (url: string | null) => void
   onSave: (record: CompletionRecord) => void
+  onRelease: (memberId: string) => void
   leave: React.ReactNode
 }
 
@@ -127,8 +124,11 @@ const FlatContent = ({
   saveError,
   tricountBusy,
   tricountError,
+  releaseBusy,
+  releaseError,
   onSaveTricount,
   onSave,
+  onRelease,
   leave,
 }: FlatContentProps) => {
   const names = new Map(members.map((member) => [member.id, member.name]))
@@ -175,6 +175,18 @@ const FlatContent = ({
       {resting.length > 0 ? (
         <Typography color="text.secondary">Free this week: {resting.join(', ')}</Typography>
       ) : null}
+      <MembersList
+        members={members.map((member) => ({
+          id: member.id,
+          name: member.name,
+          claimed: member.uid !== null,
+        }))}
+        currentMemberId={session.memberId}
+        canManage={isOwner}
+        busy={releaseBusy}
+        error={releaseError}
+        onRelease={onRelease}
+      />
       <TricountLink
         url={flat.tricountUrl}
         canEdit={isOwner}

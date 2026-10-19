@@ -93,3 +93,43 @@ test('works offline: the flat opens from the cache and a completion is queued', 
   await expect(page.getByText(/^Done \d{4}-\d{2}-\d{2}$/).first()).toBeVisible()
   await context.setOffline(false)
 })
+
+test('the owner releases a flatmate who lost their phone, and they rejoin from a new one', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const name = uniqueName()
+  const code = await createFlat(page, name)
+
+  const join = async () => {
+    const context = await browser.newContext(testInfo.project.use)
+    const phone = await context.newPage()
+    await phone.goto('/')
+    await phone.getByRole('button', { name: /join a flat/i }).click()
+    await phone.getByLabel('Invite code').fill(code)
+    await phone.getByRole('button', { name: /continue/i }).click()
+    await phone.getByRole('button', { name: 'Ben' }).click()
+    await expect(phone.getByText(name)).toBeVisible()
+    return { context, phone }
+  }
+
+  const oldPhone = await join()
+  await expect(page.getByRole('button', { name: /release ben/i })).toBeVisible()
+  // The owner can never release themselves
+  await expect(page.getByRole('button', { name: /release ana/i })).toHaveCount(0)
+
+  await page.getByRole('button', { name: /release ben/i }).click()
+  await expect(page.getByText(/lose access/i)).toBeVisible()
+  await page.getByRole('button', { name: /yes, release/i }).click()
+  await expect(page.getByText(/waiting for ben to join/i)).toBeVisible()
+
+  // The old phone is cut off immediately
+  await expect(oldPhone.phone.getByText(/not available/i)).toBeVisible()
+
+  // A new phone gets the name back with the invite code
+  const newPhone = await join()
+  await expect(newPhone.phone.getByText(/Ben \(you\)/).first()).toBeVisible()
+
+  await oldPhone.context.close()
+  await newPhone.context.close()
+})
