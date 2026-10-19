@@ -1,0 +1,31 @@
+= GPR: Project plan
+:toc:
+:lang: en
+
+== Organization
+A one-person project with three end users. Tracked in the https://github.com/users/Glinbor10/projects/2[GitHub Project]; the work is grouped into milestones.
+
+== Milestones
+
+[cols="1,3,3",options="header"]
+|===
+| Milestone | Goal | Key products
+
+| Foundation | Quality, security and infrastructure base | Prettier, architecture tests, coverage, CodeQL, Firestore rules, observability
+| v0.1 MVP | Real use by the three flatmates | Create a flat, join with a code, Tricount link
+| v0.2 Polish | Complete experience | Installable PWA, history and settings, accessibility and i18n
+|===
+
+== Risk register
+
+[cols="1,3,1,1,3",options="header"]
+|===
+| ID | Risk | Probability | Impact | Mitigation
+
+| R-01 | Badly defined Firestore rules expose a flat's data | Medium | High | Versioned rules with emulator tests before writing data code
+| R-02 | Exceeding the free-plan quota | Low | Medium | Budget alert and periodic review
+| R-03 | A flatmate picks another's name | Medium | Low | Accepted; improved with Google login
+| R-04 | PWA limitations on iOS (push, cache) | Medium | Medium | Test on a real iPhone; push as an optional feature
+| R-05 | Tricount changes its links or grants no API | Medium | Low | Configurable link; own expenses module as an alternative
+| R-06 | Dependencies with vulnerabilities | Medium | Medium | Dependabot, CodeQL and `npm audit` on release
+|===

@@ -1,9 +1,0 @@
-= MSI: Mantenimiento
-:toc:
-:lang: es
-
-* *Incidencias:* issues con plantilla `bug`, asignadas automáticamente y priorizadas en el Project.
-* *Evolutivos:* issues con plantilla `feature`, asociadas a un milestone.
-* *Versiones:* semánticas por tags (`vX.Y.Z`), creadas con la Release Action.
-* *Dependencias:* Dependabot agrupa las actualizaciones semanales por ecosistema; se mergean si la CI pasa.
-* *Revisión periódica:* revisar cuotas del plan gratuito de Firebase y el estado de las alertas de seguridad.

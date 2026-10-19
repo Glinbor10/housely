@@ -1,0 +1,48 @@
+= Quality: test plan and traceability
+:toc:
+:lang: en
+
+== Test levels
+
+[cols="2,3,3",options="header"]
+|===
+| Level | What it verifies | Command and file
+| Domain unit tests | Rotation, fairness, completions, flat validation, Tricount link | `npm test`, `src/domain/*.test.ts`
+| Components | Forms and screens with Testing Library | `npm test`, `src/components/*.test.tsx`
+| Architecture | Layers do not depend on each other and there are no cycles | `npm test`, `src/architecture.test.ts` (ArchUnitTS)
+| Firestore rules | Who can read and write what, using the emulator | `npm run test:rules`, `firebase/firestore/rules.test.ts`
+| Data layer | Firestore operations with the real rules | `npm run test:rules`, `src/firebase/*.emulator.test.ts`
+| Full application | Create a flat, mark and reopen against the emulators | `npm run test:rules`, `src/App.emulator.test.tsx`
+| End to end | Real browser: Android (Chromium) and iPhone (WebKit) against the deployed environment | `npm run e2e`, `e2e/*.spec.ts`
+|===
+
+Thresholds: logic layers with a minimum of 90% of lines, functions and statements and 85% of branches (`npm run test:coverage`).
+
+== Traceability matrix: requirements to tests
+
+[cols="1,3,5",options="header"]
+|===
+| Requirement | Description | Tests that cover it
+| FR-01, FR-02 | Create a flat and reopen it | `flat.test.ts`, `CreateFlatForm.test.tsx`, `flatRepository.emulator.test.ts` (createFlat), `App.emulator.test.tsx`, `session.test.ts`, e2e `flat.spec.ts` (create and remember)
+| FR-03 | Join with a code | `JoinFlat.test.tsx`, `flatRepository.emulator.test.ts` (findFlatIdByCode, joinFlat), rules (joining a flat), e2e (join from another phone, unknown code)
+| FR-04, FR-06 | Current week and rotation | `rotation.test.ts` (including the fairness property and free members), `ThisWeek.test.tsx`
+| FR-05 | Mark as done | `completions.test.ts`, `ThisWeek.test.tsx`, rules (completions), e2e (mark and sync)
+| FR-07, FR-08 | History and editing | Pending (milestone v0.2)
+| FR-09 | Tricount link | `tricount.test.ts`, `TricountLink.test.tsx`, rules (tricount link), e2e (http rejected, https opens in a new tab)
+| FR-10 | Real-time state | `flatRepository.emulator.test.ts` (subscriptions), e2e (sync in both directions)
+| FR-11 | Recover access (release a member) | Rules (releasing a flatmate), `flatRepository.emulator.test.ts` (releaseMember), `MembersList.test.tsx`, e2e (release and join again)
+| NFR-01 | Installable PWA on Android and iOS | `manifest.test.ts`, `icons.test.mjs`, `installHint.test.ts`, `InstallHint.test.tsx`, e2e `mobile.spec.ts`
+| NFR-02 | Only members access their flat | `firebase/firestore/rules.test.ts` in full
+| NFR-04 | Accessibility and mobile use | `theme.test.ts` (44 px touch targets), e2e (no horizontal scroll, dark mode). Texts in two languages: pending
+| NFR-05 | Layered architecture | `architecture.test.ts`
+| NFR-06 | Quality of every change | PR pipeline: lint, formatting, types, tests, coverage, build and browser tests
+| NFR-07 | Works offline | e2e (open without network and queue a completion), `manifest.test.ts`
+| NFR-08 | Web security | `hosting-headers.test.mjs`, e2e (headers and no CSP violations)
+|===
+
+== Manual tests before every release
+Those that cannot be fully automated:
+
+. Install the app on a real iPhone (Safari) and a real Android, and open the flat offline.
+. Receive the install prompt on iPhone and check that it disappears when dismissed.
+. Check by eye the look in light and dark mode.

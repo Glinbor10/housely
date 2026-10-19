@@ -1,0 +1,40 @@
+= DSI: Data model (Firestore)
+:toc:
+:lang: en
+
+The zone assignment is *not stored*: it is computed with `member = members[(week + zoneIndex) % memberCount]`. Only data that cannot be derived is stored.
+
+[source]
+----
+flats/{flatId}
+  name, startDate, zones[], tricountUrl (optional, https on tricount.com only), inviteCode, createdAt
+flats/{flatId}/members/{memberId}
+  name, color, uid (anonymous identity that claimed it, or null), active, order (position in the rotation)
+flats/{flatId}/users/{uid}
+  memberId (membership: links an anonymous identity to its member)
+flats/{flatId}/completions/{weekIndex}_{zone}
+  weekIndex, zone, memberId, doneAt (YYYY-MM-DD)
+inviteCodes/{code}
+  flatId
+----
+
+== Modeling decisions
+* The completion identifier combines week and zone: marking again corrects the date without duplicating.
+* `order` keeps the order in which the members were entered: the rotation depends on it and Firestore does not guarantee any order by identifier.
+* `active` allows deactivating a member without breaking the history.
+* `uid` links a member to the anonymous identity of their device.
+
+== Access rules (NFR-02)
+Implemented in `firebase/firestore/firestore.rules` and verified with tests on the emulator (`npm run test:rules`).
+
+. A user is a *member* of a flat if `flats/{flatId}/users/{uid}` exists. Only members read the flat and its completions.
+. Create a flat: any authenticated user, who becomes the owner (`ownerUid`, immutable). A flat can never be deleted, nor its members (they are deactivated with `active`).
+. Join: the user claims an unclaimed member (`uid == null`) and creates their membership in the same batch. An already claimed member cannot be claimed.
+. Only the owner edits the flat and adds or modifies members.
+. Completions: a member only records, corrects or deletes their own, for an existing zone, with a valid date and a `week_zone` identifier.
+. Invite codes: they can be read, not listed.
+
+=== Conscious trade-off
+Member names (`members`) are readable by any authenticated user, so that whoever joins can pick theirs before becoming a member. The flat identifier is random and is only obtained through the invite code. The rest of the flat's data is not exposed.
+
+Issue https://github.com/Glinbor10/housely/issues/16[#16].

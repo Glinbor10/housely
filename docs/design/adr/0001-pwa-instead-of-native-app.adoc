@@ -1,0 +1,10 @@
+= ADR-0001: PWA instead of a native app
+:lang: en
+
+*Status:* accepted
+
+*Context:* three users with Android and iOS, no budget. Publishing on iOS costs $99/year.
+
+*Decision:* a PWA built with React, installable from the browser.
+
+*Consequences:* zero cost and a single codebase. iOS limitation: push notifications only work if the app is installed on the home screen.
