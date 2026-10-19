@@ -1,5 +1,12 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { connectAuthEmulator, getAuth } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  connectAuthEmulator,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth,
+  type Auth,
+} from 'firebase/auth'
 import {
   connectFirestoreEmulator,
   getFirestore,
@@ -26,9 +33,22 @@ const createFirestore = (app: FirebaseApp): Firestore => {
   }
 }
 
+// Only anonymous sign-in is used, so the popup and redirect machinery is left out: it would load a
+// Google script (apis.google.com) that our Content-Security-Policy rightly blocks.
+const createAuth = (app: FirebaseApp): Auth => {
+  try {
+    return initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    })
+  } catch {
+    // Auth was already initialized for this app (hot reload or a second module instance)
+    return getAuth(app)
+  }
+}
+
 const createFirebase = () => {
   const app = initializeApp(readFirebaseConfig(import.meta.env))
-  const auth = getAuth(app)
+  const auth = createAuth(app)
   const db = createFirestore(app)
   if (shouldUseEmulators(import.meta.env)) {
     connectAuthEmulator(auth, AUTH_EMULATOR_URL, { disableWarnings: true })
