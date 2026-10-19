@@ -6,7 +6,7 @@
 2. Branch from `main`: `feat/<short-name>`, `fix/<short-name>`, `chore/<short-name>`.
 3. Write the failing test first (TDD), then the implementation.
 4. Use conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `ci:`).
-5. Open a Pull Request. `main` is protected: the CI check must pass and nobody pushes directly.
+5. Open a Pull Request with a conventional-commit title and `Closes #N` linking its issue (the `PR title and linked issue` check enforces it; Dependabot only needs the title). `main` is protected: the CI check must pass and nobody pushes directly.
 6. Squash and merge. The branch is deleted automatically.
 
 ## Code conventions

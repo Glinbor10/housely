@@ -1,0 +1,28 @@
+name: PR Metadata
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  metadata:
+    name: PR title and linked issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { validatePullRequest } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/pr-metadata.mjs`)
+            const pr = context.payload.pull_request
+            const errors = validatePullRequest({
+              title: pr.title,
+              body: pr.body,
+              author: pr.user.login,
+            })
+            errors.forEach((message) => core.error(message))
+            if (errors.length > 0) core.setFailed(errors.join('\n'))
