@@ -1,0 +1,46 @@
+= IAS: Versionado y procedimiento de release
+:toc:
+:lang: es
+
+== Versionado
+Se usa versionado semántico `MAYOR.MINOR.PATCH`. La versión no se guarda en un fichero: se deriva de los tags de Git `vX.Y.Z`.
+
+[cols="1,3",options="header"]
+|===
+| Parte | Cuándo sube
+| PATCH | Corrección de errores sin cambios de funcionalidad (`v0.1.1`)
+| MINOR | Funcionalidad nueva compatible (`v0.2.0`). Mientras la versión sea `0.x` también marca los hitos del plan
+| MAJOR | Cambio incompatible, o declarar estable el producto (`v1.0.0`)
+|===
+
+La primera versión del MVP es *`v0.1.0`*: se lanza la release con `bump = minor` partiendo de `v0.0.0`.
+
+== Entornos y flujo
+
+[cols="1,2,2",options="header"]
+|===
+| Entorno | Proyecto Firebase | Cómo llega
+| Preview de PR | `housely-ci` (canal temporal de 7 días) | Cada PR; ejecuta pruebas de navegador reales
+| CI | `housely-ci` | Cada merge a `main`; ejecuta de nuevo las pruebas de navegador
+| Producción | `housely-prod` | Workflow manual *Release Action*, con aprobación
+|===
+
+== Procedimiento de release
+. Comprobar que `main` está verde (último *Main merge* correcto) y que `housely-ci` se ve bien en un móvil Android y en un iPhone.
+. En GitHub, *Actions*, *Release Action*, *Run workflow* y elegir `patch`, `minor` o `major`.
+. El workflow *verifica* (lint, tipos, pruebas, auditoría de dependencias de producción) y se detiene esperando la *aprobación* del entorno `production`.
+. Tras aprobar: despliega las reglas de Firestore, despliega la web, ejecuta una prueba de humo que *no escribe datos* y crea el tag y la GitHub Release con sus notas.
+. Revisar en producción desde un móvil y comprobar la versión en la GitHub Release.
+
+== Marcha atrás (rollback)
+* *Web:* Firebase Hosting conserva las versiones anteriores. En la consola de Firebase, *Hosting*, *Historial de versiones*, *Rollback* a la anterior. Es inmediato.
+* *Reglas de Firestore:* están versionadas en Git. Se revierte el cambio con una PR y se vuelve a desplegar, o se vuelve a publicar la versión anterior desde *Firestore*, *Reglas*, *Historial*.
+* *Datos:* los cambios de modelo deben ser compatibles hacia atrás; no hay migraciones destructivas.
+
+== Requisitos previos de producción
+Una vez por entorno, y de forma manual:
+
+. Activar la API de Firestore, crear la base de datos (modo producción, región `eur3`) y activar la autenticación anónima.
+. Restringir la clave web por dominio.
+. Dar a la cuenta de servicio los roles *Firebase Rules Admin* y *Cloud Datastore Index Admin* y fijar `FIRESTORE_DEPLOY_ENABLED=true`.
+. Exigir aprobación en el entorno `production` de GitHub.

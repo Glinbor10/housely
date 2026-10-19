@@ -36,6 +36,16 @@ npm test
 
 Project documentation follows a tailored Métrica v3 structure (in Spanish, AsciiDoc): see [docs/README.adoc](docs/README.adoc).
 
+## What it does
+
+- Create a flat (people in rotation order, zones, start date) and share a 6 character invite code
+- Weekly rotation where, over a full cycle, every person cleans every zone once, with any number of people and zones
+- Mark a zone as done (date defaults to today), real-time for everybody, also offline
+- Owner-managed Tricount link and recovery of a flatmate who lost their phone
+- Installable on Android and iPhone as a PWA
+
+See the [user manual](docs/ias/manual-usuario.adoc) and the [versioning and release procedure](docs/ias/versionado-y-release.adoc).
+
 ## Roadmap
 
 Tracked in the GitHub milestones and issues of this repository.
