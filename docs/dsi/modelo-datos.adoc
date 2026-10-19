@@ -9,7 +9,7 @@ La asignación de zonas *no se guarda*: se calcula con `miembro = miembros[(sema
 flats/{flatId}
   name, startDate, zones[], tricountUrl, inviteCode, createdAt
 flats/{flatId}/members/{memberId}
-  name, color, uid (identidad anónima que lo reclamó, o null), active
+  name, color, uid (identidad anónima que lo reclamó, o null), active, order (posición en la rotación)
 flats/{flatId}/users/{uid}
   memberId (membresía: enlaza una identidad anónima con su persona)
 flats/{flatId}/completions/{weekIndex}_{zone}
@@ -20,6 +20,7 @@ inviteCodes/{code}
 
 == Decisiones de modelado
 * El identificador del completado combina semana y zona: marcar de nuevo corrige la fecha sin duplicar.
+* `order` conserva el orden en que se introdujeron las personas: la rotación depende de él y Firestore no garantiza ningún orden por identificador.
 * `active` permite dar de baja a una persona sin romper el historial.
 * `uid` enlaza un miembro con la identidad anónima de su dispositivo.
 

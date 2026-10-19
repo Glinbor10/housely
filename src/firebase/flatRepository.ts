@@ -31,6 +31,8 @@ export interface MemberRecord {
   // Anonymous identity that claimed the member, null while nobody has
   uid: string | null
   active: boolean
+  // Position in the rotation: members are always listed in the order they were entered
+  order: number
 }
 
 export interface CompletionRecord {
@@ -112,6 +114,7 @@ export const createFlat = async (db: Firestore, input: CreateFlatInput): Promise
       color: MEMBER_COLORS[index % MEMBER_COLORS.length],
       uid: isOwner ? input.ownerUid : null,
       active: true,
+      order: index,
     })
   })
 
@@ -126,9 +129,13 @@ export const findFlatIdByCode = async (db: Firestore, code: string): Promise<str
   return snapshot.exists() ? (snapshot.data().flatId as string) : null
 }
 
+const byOrder = (a: MemberRecord, b: MemberRecord): number => a.order - b.order
+
 export const listMembers = async (db: Firestore, flatId: string): Promise<MemberRecord[]> => {
   const snapshot = await getDocs(collection(flatRef(db, flatId), 'members'))
-  return snapshot.docs.map((member) => ({ id: member.id, ...member.data() }) as MemberRecord)
+  return snapshot.docs
+    .map((member) => ({ id: member.id, ...member.data() }) as MemberRecord)
+    .sort(byOrder)
 }
 
 // Claiming the member and creating the membership must succeed or fail together.
@@ -166,7 +173,9 @@ export const subscribeMembers = (
     collection(flatRef(db, flatId), 'members'),
     (snapshot) =>
       onChange(
-        snapshot.docs.map((member) => ({ id: member.id, ...member.data() }) as MemberRecord),
+        snapshot.docs
+          .map((member) => ({ id: member.id, ...member.data() }) as MemberRecord)
+          .sort(byOrder),
       ),
     onError,
   )

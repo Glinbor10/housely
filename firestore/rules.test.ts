@@ -45,12 +45,14 @@ const seedFlat = () =>
       color: '#1976d2',
       uid: OWNER,
       active: true,
+      order: 0,
     })
     await setDoc(doc(firestore, `flats/${FLAT}/members/m-free`), {
       name: 'Ben',
       color: '#388e3c',
       uid: null,
       active: true,
+      order: 1,
     })
     await setDoc(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm-owner' })
     await setDoc(doc(firestore, 'inviteCodes/ABC123'), { flatId: FLAT, ownerUid: OWNER })
@@ -81,6 +83,7 @@ describe('flats', () => {
       color: '#1976d2',
       uid: OWNER,
       active: true,
+      order: 0,
     })
     batch.set(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm-owner' })
     batch.set(doc(firestore, 'inviteCodes/ABC123'), { flatId: FLAT, ownerUid: OWNER })
@@ -179,9 +182,18 @@ describe('joining a flat', () => {
 describe('members', () => {
   it('lets the owner add members and blocks everybody else', async () => {
     await seedFlat()
-    const member = { name: 'Carl', color: '#f57c00', uid: null, active: true }
+    const member = { name: 'Carl', color: '#f57c00', uid: null, active: true, order: 2 }
     await assertSucceeds(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-new`), member))
     await assertFails(setDoc(doc(db(STRANGER), `flats/${FLAT}/members/m-new2`), member))
+  })
+
+  it('requires a non-negative integer order', async () => {
+    await seedFlat()
+    const base = { name: 'Carl', color: '#f57c00', uid: null, active: true }
+    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-a`), base))
+    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-b`), { ...base, order: -1 }))
+    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-c`), { ...base, order: 1.5 }))
+    await assertSucceeds(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-d`), { ...base, order: 3 }))
   })
 
   it('never allows deleting members', async () => {
