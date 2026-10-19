@@ -5,7 +5,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, type Firestore } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { FlatDraft } from '../domain/flat'
 import {
@@ -37,7 +37,9 @@ const draft: FlatDraft = {
 }
 
 let env: RulesTestEnvironment
-const db = (uid: string) => env.authenticatedContext(uid).firestore()
+// rules-unit-testing types its Firestore with the compat API, but the instance works with the
+// modular functions used by the repository, so a single cast bridges the type difference.
+const db = (uid: string) => env.authenticatedContext(uid).firestore() as unknown as Firestore
 
 const create = (code = 'ABC123') =>
   createFlat(db(OWNER), {
