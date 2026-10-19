@@ -10,7 +10,7 @@
 | Unitarias del dominio | Rotación, equidad, completados, validación de pisos, enlace de Tricount | `npm test`, `src/domain/*.test.ts`
 | Componentes | Formularios y pantallas con Testing Library | `npm test`, `src/components/*.test.tsx`
 | Arquitectura | Las capas no dependen unas de otras ni hay ciclos | `npm test`, `src/architecture.test.ts` (ArchUnitTS)
-| Reglas de Firestore | Quién puede leer y escribir qué, con el emulador | `npm run test:rules`, `firestore/rules.test.ts`
+| Reglas de Firestore | Quién puede leer y escribir qué, con el emulador | `npm run test:rules`, `firebase/firestore/rules.test.ts`
 | Capa de datos | Operaciones sobre Firestore con las reglas reales | `npm run test:rules`, `src/firebase/*.emulator.test.ts`
 | Aplicación completa | Crear piso, marcar y reabrir contra los emuladores | `npm run test:rules`, `src/App.emulator.test.tsx`
 | Extremo a extremo | Navegador real: Android (Chromium) e iPhone (WebKit) contra el entorno desplegado | `npm run e2e`, `e2e/*.spec.ts`
@@ -32,7 +32,7 @@ Umbrales: cobertura de las capas de lógica con mínimo del 90 % de líneas, fun
 | RF-10 | Estado en tiempo real | `flatRepository.emulator.test.ts` (suscripciones), e2e (sincronización en ambos sentidos)
 | RF-11 | Recuperar el acceso (liberar a una persona) | Reglas (releasing a flatmate), `flatRepository.emulator.test.ts` (releaseMember), `MembersList.test.tsx`, e2e (liberar y volver a unirse)
 | RNF-01 | PWA instalable en Android e iOS | `manifest.test.ts`, `icons.test.mjs`, `installHint.test.ts`, `InstallHint.test.tsx`, e2e `mobile.spec.ts`
-| RNF-02 | Solo los miembros acceden a su piso | `firestore/rules.test.ts` completo
+| RNF-02 | Solo los miembros acceden a su piso | `firebase/firestore/rules.test.ts` completo
 | RNF-04 | Accesibilidad y uso móvil | `theme.test.ts` (objetivos táctiles de 44 px), e2e (sin scroll horizontal, modo oscuro). Textos en dos idiomas: pendiente
 | RNF-05 | Arquitectura por capas | `architecture.test.ts`
 | RNF-06 | Calidad de cada cambio | Pipeline de PR: lint, formato, tipos, pruebas, cobertura, build y pruebas de navegador

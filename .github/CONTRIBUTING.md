@@ -9,6 +9,20 @@
 5. Open a Pull Request with a conventional-commit title and `Closes #N` linking its issue (the `PR title and linked issue` check enforces it; Dependabot only needs the title). `main` is protected: the CI check must pass and nobody pushes directly.
 6. Squash and merge. The branch is deleted automatically.
 
+## Repository layout
+
+The root keeps only what tools and GitHub expect there; the rest of the configuration is grouped.
+
+| Path        | What it holds                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`      | The app: `domain` (pure logic), `firebase` (data layer), `hooks`, `storage`, `components` (presentational) and `screens` (the only layer that joins them)                                                     |
+| `config/`   | oxlint, the app and tooling `tsconfig`s and `.env.emulators` (Vite `envDir`)                                                                                                                                  |
+| `firebase/` | `firebase.json`, `.firebaserc`, Firestore rules, indexes and their emulator tests; the build is emitted to `firebase/dist` because Firebase only serves a directory inside the one that holds `firebase.json` |
+| `e2e/`      | Real-browser tests (Android and iPhone)                                                                                                                                                                       |
+| `scripts/`  | Icon generation and repository checks                                                                                                                                                                         |
+| `docs/`     | Métrica v3 documentation (Spanish, AsciiDoc)                                                                                                                                                                  |
+| `public/`   | Static assets and the logo source                                                                                                                                                                             |
+
 ## Code conventions
 
 - Code, comments and commit messages in English.
@@ -28,14 +42,14 @@ The Firebase web config (public by design) is injected at build time from the `V
 
 ## Local development (new machine checklist)
 
-No credentials or secrets are needed: local work uses the Firebase emulators with fake values committed in `.env.emulators`.
+No credentials or secrets are needed: local work uses the Firebase emulators with fake values committed in `config/.env.emulators`.
 
 1. Install Node 24 and Java 21 or newer (the Firestore emulator needs it).
 2. `git clone` the repository and run `npm install`.
 3. Run `npm run dev`: it starts the Auth and Firestore emulators and the app (http://localhost:5173). The emulator panel is at http://localhost:4000, where you can inspect users and documents.
 4. Emulator data is wiped when you stop the command. The same Firestore rules as production apply.
 
-To run the app against the real `housely-ci` project instead, create `.env.ci.local` (git-ignored) with the `VITE_FIREBASE_*` values of that project and run `npm run dev:ci`.
+To run the app against the real `housely-ci` project instead, create `config/.env.ci.local` (git-ignored) with the `VITE_FIREBASE_*` values of that project and run `npm run dev:ci`.
 
 ## Commands
 

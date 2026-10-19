@@ -15,14 +15,14 @@
 * Proyectos Firebase `housely-ci` y `housely-prod`.
 * Variables de repositorio: `FIREBASE_PROJECT_CI`, `FIREBASE_PROJECT_PROD`.
 * Variables por entorno de GitHub (`ci`, `production`): `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` y `VITE_FIREBASE_MESSAGING_SENDER_ID`. La configuración web de Firebase es pública por diseño; la seguridad está en las reglas de Firestore.
-* Desarrollo local: emuladores de Firebase (Auth y Firestore) con valores ficticios versionados en `.env.emulators`; no requiere credenciales. Para usar `housely-ci` desde local, `.env.ci.local` (ignorado por git) y `npm run dev:ci`.
+* Desarrollo local: emuladores de Firebase (Auth y Firestore) con valores ficticios versionados en `config/.env.emulators`; no requiere credenciales. Para usar `housely-ci` desde local, `config/.env.ci.local` (ignorado por git) y `npm run dev:ci`.
 * Secretos: `FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI` y `FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD`.
 
 == Elementos de configuración
 Código fuente, workflows, reglas de Firestore (próximamente), documentación en `docs/` y plantillas de GitHub.
 
 == Despliegue de reglas de Firestore desde la CI
-Las reglas y los índices (`firestore/`) se despliegan desde los workflows, antes de las pruebas que dependen de ellos: en cada PR y en cada merge a `main` hacia `housely-ci`, y en la release hacia `housely-prod`.
+Las reglas y los índices (`firebase/firestore/`) se despliegan desde los workflows, antes de las pruebas que dependen de ellos: en cada PR y en cada merge a `main` hacia `housely-ci`, y en la release hacia `housely-prod`.
 
 * Se activa con la variable de repositorio `FIRESTORE_DEPLOY_ENABLED=true`.
 * La cuenta de servicio de cada entorno (`FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI` y `..._PROD`) necesita, además de Firebase Hosting Admin, los roles *Firebase Rules Admin* y *Cloud Datastore Index Admin* (Google Cloud, IAM).

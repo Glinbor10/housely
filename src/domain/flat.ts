@@ -8,7 +8,7 @@ export interface FlatDraft {
   startDate: string
 }
 
-// Limits mirror the Firestore rules (firestore/firestore.rules).
+// Limits mirror the Firestore rules (firebase/firestore/firestore.rules).
 const MAX_FLAT_NAME = 60
 const MAX_MEMBER_NAME = 40
 const MAX_ZONE_NAME = 60

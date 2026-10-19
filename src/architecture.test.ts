@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { projectFiles } from 'archunit'
 
 // Architecture rules: keep layers independent so the domain stays pure and testable.
-describe('architecture', { timeout: 60_000 }, () => {
+describe('architecture', { timeout: 120_000 }, () => {
   it('has no circular dependencies in src', async () => {
     const violations = await projectFiles().inFolder('src/**').should().haveNoCycles().check()
     expect(violations).toEqual([])

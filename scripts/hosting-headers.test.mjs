@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const config = JSON.parse(readFileSync('firebase.json', 'utf8'))
+const config = JSON.parse(readFileSync('firebase/firebase.json', 'utf8'))
 const rules = config.hosting.headers ?? []
 
 const headersFor = (source) =>

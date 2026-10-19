@@ -4,15 +4,16 @@ docs:
 
 infra:
   - changed-files:
-      - any-glob-to-any-file: ['.github/**', 'firebase.json', '.firebaserc', 'firestore.*']
+      - any-glob-to-any-file: ['.github/**', 'firebase/**', 'config/**']
 
 quality:
   - changed-files:
-      - any-glob-to-any-file: ['**/*.test.ts', '**/*.test.tsx', '.oxlintrc.json', '.editorconfig']
+      - any-glob-to-any-file:
+          ['**/*.test.ts', '**/*.test.tsx', 'config/oxlint.json', '.editorconfig']
 
 security:
   - changed-files:
-      - any-glob-to-any-file: ['.github/SECURITY.md', 'firestore.rules']
+      - any-glob-to-any-file: ['.github/SECURITY.md', 'firebase/firestore/firestore.rules']
 
 pwa:
   - changed-files:
