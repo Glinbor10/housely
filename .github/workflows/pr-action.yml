@@ -13,9 +13,15 @@ jobs:
   check:
     name: Lint, typecheck, test and build
     runs-on: ubuntu-latest
-    # Same convention as Viafirma repos: skip CI when the PR title contains [skip-ci]
+    environment: ci
+    # Skip CI when the PR title contains [skip-ci]
     if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
     env:
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
       # Preview deploys are skipped until the Firebase secret/variable exist.
       HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI != '' && vars.FIREBASE_PROJECT_CI != '' }}
     steps:
@@ -43,3 +49,31 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI }}
           projectId: ${{ vars.FIREBASE_PROJECT_CI }}
           expires: 7d
+
+  rules:
+    name: Firestore rules tests
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Cache Firestore emulator
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-15.34.0
+
+      - run: npm ci
+      - run: npm run test:rules

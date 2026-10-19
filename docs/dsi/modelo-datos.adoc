@@ -1,0 +1,39 @@
+= DSI: Modelo de datos (Firestore)
+:toc:
+:lang: es
+
+La asignación de zonas *no se guarda*: se calcula con `miembro = miembros[(semana + indiceZona) % nMiembros]`. Solo se guardan los datos que no se pueden deducir.
+
+[source]
+----
+flats/{flatId}
+  name, startDate, zones[], tricountUrl, inviteCode, createdAt
+flats/{flatId}/members/{memberId}
+  name, color, uid (identidad anónima que lo reclamó, o null), active
+flats/{flatId}/users/{uid}
+  memberId (membresía: enlaza una identidad anónima con su persona)
+flats/{flatId}/completions/{weekIndex}_{zone}
+  weekIndex, zone, memberId, doneAt (AAAA-MM-DD)
+inviteCodes/{code}
+  flatId
+----
+
+== Decisiones de modelado
+* El identificador del completado combina semana y zona: marcar de nuevo corrige la fecha sin duplicar.
+* `active` permite dar de baja a una persona sin romper el historial.
+* `uid` enlaza un miembro con la identidad anónima de su dispositivo.
+
+== Reglas de acceso (RNF-02)
+Implementadas en `firestore/firestore.rules` y verificadas con tests en el emulador (`npm run test:rules`).
+
+. Un usuario es *miembro* de un piso si existe `flats/{flatId}/users/{uid}`. Solo los miembros leen el piso y sus completados.
+. Crear un piso: cualquier usuario autenticado, que queda como propietario (`ownerUid`, inmutable). Nunca se puede borrar un piso, ni sus personas (se desactivan con `active`).
+. Unirse: el usuario reclama una persona sin reclamar (`uid == null`) y crea su membresía en el mismo lote. No se puede reclamar una persona ya reclamada.
+. Solo el propietario edita el piso y añade o modifica personas.
+. Completados: un miembro solo registra, corrige o borra los suyos, de una zona existente, con fecha válida y un identificador `semana_zona`.
+. Códigos de invitación: se pueden leer, no listar.
+
+=== Concesión consciente
+Los nombres de las personas (`members`) son legibles por cualquier usuario autenticado, para que quien se une pueda elegir el suyo antes de ser miembro. El identificador del piso es aleatorio y solo se obtiene a través del código de invitación. El resto de datos del piso no se expone.
+
+Issue https://github.com/Glinbor10/housely/issues/16[#16].

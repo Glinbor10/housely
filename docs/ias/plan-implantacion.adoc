@@ -1,0 +1,23 @@
+= IAS: Plan de implantación y aceptación
+:toc:
+:lang: es
+
+== Implantación
+* Cada merge a `main` despliega a `housely-ci` (pipeline `merge-main`).
+* Producción se despliega con la *Release Action*, que calcula la versión desde los tags, despliega a `housely-prod` y crea la GitHub Release. El entorno `production` debe exigir aprobación manual.
+
+== Pruebas de aceptación
+Se realizan en `housely-ci` por los tres compañeros antes de lanzar una release:
+
+[cols="1,3",options="header"]
+|===
+| ID | Prueba
+| PA-01 | Crear piso, cerrar el navegador y volver a abrirlo: el piso sigue activo (RF-01, RF-02)
+| PA-02 | Un segundo móvil se une con el código y ve el mismo estado (RF-03, RF-10)
+| PA-03 | Marcar una zona como hecha: los otros móviles lo ven sin recargar (RF-05, RF-10)
+| PA-04 | Instalar como app en Android e iOS (RNF-01)
+| PA-05 | Un usuario ajeno al piso no puede leer sus datos (RNF-02)
+|===
+
+== Guía de usuario
+Instrucciones de instalación y uso para los compañeros, en el README de usuario (pendiente del milestone v0.2).

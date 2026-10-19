@@ -1,0 +1,22 @@
+= Calidad: plan de aseguramiento
+:toc:
+:lang: es
+
+[cols="2,3,2",options="header"]
+|===
+| Control | Herramienta | Dónde se aplica
+
+| Estilo y errores estáticos | oxlint | CI en cada PR
+| Formato | Prettier (`format:check`) | CI en cada PR
+| Tipado | TypeScript (`tsc -b`) | CI en cada PR
+| Pruebas unitarias | Vitest, escritas antes del código (TDD) | CI en cada PR
+| Pruebas de arquitectura | ArchUnitTS | CI en cada PR
+| Cobertura mínima | Vitest coverage | Issue https://github.com/Glinbor10/housely/issues/12[#12]
+| Seguridad de dependencias | Dependabot, `npm audit` y CodeQL | Semanal y en release
+| Revisión de cambios | Pull Request obligatoria, `main` protegida | Siempre
+|===
+
+== Criterios de aceptación de un cambio
+. El check de CI pasa.
+. Las pruebas nuevas existen y fallaron antes de la implementación.
+. La documentación afectada está actualizada.

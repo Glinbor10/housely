@@ -18,7 +18,7 @@ React + TypeScript + Vite + MUI, Firebase (Hosting, Firestore, anonymous Auth), 
 - **Merge to `main`**: verified build deployed to `housely-ci`.
 - **Release** (manual workflow): version derived from git tags, deployed to `housely-prod`, GitHub Release created.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and conventions.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the workflow and conventions.
 
 ## Development
 
@@ -31,6 +31,10 @@ npm test
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE): the source is available and free for any noncommercial use. Commercial use and selling the product are reserved to the author.
+
+## Documentation
+
+Project documentation follows a tailored Métrica v3 structure (in Spanish, AsciiDoc): see [docs/README.adoc](docs/README.adoc).
 
 ## Roadmap
 
