@@ -43,6 +43,13 @@ describe('hosting security headers', () => {
     expect(directives['form-action']).toEqual(["'self'"])
   })
 
+  it('allows only the single pixel image Firestore uses to detect the network, and nothing wider', () => {
+    const images = directives['img-src'] ?? []
+    expect(images).toContain('https://www.google.com/images/cleardot.gif')
+    expect(images).not.toContain('*')
+    expect(images).not.toContain('https:')
+  })
+
   it('never allows inline or eval scripts', () => {
     const scripts = directives['script-src'] ?? []
     expect(scripts).toContain("'self'")
