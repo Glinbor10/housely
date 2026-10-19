@@ -45,10 +45,11 @@ service cloud.firestore {
     }
 
     function isValidMember(data) {
-      return data.keys().hasOnly(['name', 'color', 'uid', 'active'])
-        && data.keys().hasAll(['name', 'uid', 'active'])
+      return data.keys().hasOnly(['name', 'color', 'uid', 'active', 'order'])
+        && data.keys().hasAll(['name', 'uid', 'active', 'order'])
         && isShortText(data.name, 40)
         && data.active is bool
+        && data.order is int && data.order >= 0
         && (data.uid == null || data.uid == request.auth.uid);
     }
 

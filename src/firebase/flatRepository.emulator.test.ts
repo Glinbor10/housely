@@ -104,6 +104,18 @@ describe('createFlat', () => {
     })
   })
 
+  it('stores and returns the members in the order they were entered', async () => {
+    const { flatId } = await create()
+    const members = await listMembers(db(OWNER), flatId)
+    expect(members.map((member) => member.name)).toEqual(['Ana', 'Ben', 'Carl'])
+    expect(members.map((member) => member.order)).toEqual([0, 1, 2])
+    const streamed = await waitFor<MemberRecord[]>(
+      (callback) => subscribeMembers(db(OWNER), flatId, callback, () => {}),
+      (values) => values.length === 3,
+    )
+    expect(streamed.map((member) => member.name)).toEqual(['Ana', 'Ben', 'Carl'])
+  })
+
   it('gives every member a color', async () => {
     const { flatId } = await create()
     const members = await listMembers(db(OWNER), flatId)
