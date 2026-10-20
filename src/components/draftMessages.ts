@@ -1,19 +1,24 @@
-const MESSAGES: Record<string, string> = {
-  'flat-name-required': 'Give the flat a name.',
-  'flat-name-too-long': 'The flat name is too long (60 characters at most).',
-  'members-required': 'Add at least one person.',
-  'members-too-many': 'There are too many people (20 at most).',
-  'member-name-too-long': 'A person name is too long (40 characters at most).',
-  'members-duplicated': 'Two people have the same name.',
-  'zones-required': 'Add at least one zone.',
-  'zones-too-many': 'There are too many zones (20 at most).',
-  'zone-name-too-long': 'A zone name is too long (60 characters at most).',
-  'zone-name-invalid': 'Zone names cannot contain a slash.',
-  'zones-duplicated': 'Two zones have the same name.',
-  'start-date-invalid': 'Choose a valid start date for the rotation.',
-  'owner-required': 'Choose which person you are.',
-}
+import { translate, type MessageKey } from '../i18n/i18n'
 
-// Turns the error codes of the domain into text for the user.
+const CODES = [
+  'flat-name-required',
+  'flat-name-too-long',
+  'members-required',
+  'members-too-many',
+  'member-name-too-long',
+  'members-duplicated',
+  'zones-required',
+  'zones-too-many',
+  'zone-name-too-long',
+  'zone-name-invalid',
+  'zones-duplicated',
+  'start-date-invalid',
+  'owner-required',
+] as const
+
+const isKnown = (code: string): code is (typeof CODES)[number] =>
+  (CODES as readonly string[]).includes(code)
+
+// Turns the error codes of the domain into text for the user, in the current language.
 export const describeDraftError = (code: string): string =>
-  MESSAGES[code] ?? 'Check the data and try again.'
+  translate(isKnown(code) ? (`create.error.${code}` as MessageKey) : 'create.error.generic')

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Alert, Button, Stack, Typography } from '@mui/material'
+import { useTranslation } from '../i18n/useTranslation'
 
 interface Person {
   id: string
@@ -26,31 +27,32 @@ export const MembersList = ({
   error,
   onRelease,
 }: MembersListProps) => {
+  const { t } = useTranslation()
   const [confirming, setConfirming] = useState<string | null>(null)
 
   return (
     <Stack spacing={1}>
-      <Typography variant="h6">People</Typography>
+      <Typography variant="h6">{t('people.title')}</Typography>
       {members.map((member) => {
         const isMe = member.id === currentMemberId
         return (
           <Stack key={member.id} spacing={1}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography>{isMe ? `${member.name} (you)` : member.name}</Typography>
+              <Typography>{isMe ? t('common.you', { name: member.name }) : member.name}</Typography>
               {member.claimed ? (
                 canManage && !isMe ? (
                   <Button
                     size="small"
                     color="warning"
-                    aria-label={`Release ${member.name}`}
+                    aria-label={t('people.releaseAria', { name: member.name })}
                     onClick={() => setConfirming(member.id)}
                   >
-                    Release
+                    {t('people.release')}
                   </Button>
                 ) : null
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  Waiting for {member.name} to join
+                  {t('people.waiting', { name: member.name })}
                 </Typography>
               )}
             </Stack>
@@ -60,7 +62,7 @@ export const MembersList = ({
                 action={
                   <Stack direction="row" spacing={1}>
                     <Button color="inherit" onClick={() => setConfirming(null)}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       color="inherit"
@@ -70,13 +72,12 @@ export const MembersList = ({
                         setConfirming(null)
                       }}
                     >
-                      Yes, release
+                      {t('people.confirmYes')}
                     </Button>
                   </Stack>
                 }
               >
-                {member.name} will lose access on their current phone and can rejoin with the invite
-                code. What they already cleaned is kept.
+                {t('people.confirm', { name: member.name })}
               </Alert>
             ) : null}
           </Stack>

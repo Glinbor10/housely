@@ -13,6 +13,7 @@ import {
 } from '@mui/material'
 import { findCompletion, type Completion } from '../domain/completions'
 import type { Assignment } from '../domain/rotation'
+import { useTranslation } from '../i18n/useTranslation'
 
 interface ThisWeekProps {
   weekIndex: number
@@ -34,6 +35,7 @@ export const ThisWeek = ({
   colors = {},
   onMarkDone,
 }: ThisWeekProps) => {
+  const { t } = useTranslation()
   // Draft dates per zone; a zone without a draft defaults to today.
   const [dates, setDates] = useState<Record<string, string>>({})
   const done = assignments.filter(({ zone }) => findCompletion(completions, weekIndex, zone)).length
@@ -43,18 +45,18 @@ export const ThisWeek = ({
     <Stack spacing={2}>
       <Stack spacing={0.5}>
         <Typography variant="body2" color="text.secondary">
-          {done} of {assignments.length} zones done this week
+          {t('week.zonesDone', { done, total: assignments.length })}
         </Typography>
         <LinearProgress
           variant="determinate"
           value={percentage}
           color={percentage === 100 ? 'success' : 'primary'}
-          aria-label="Progress of the week"
+          aria-label={t('week.progress')}
           sx={{ height: 8, borderRadius: 4 }}
         />
         {percentage === 100 && assignments.length > 0 ? (
           <Typography variant="body2" color="success.main">
-            Everything is clean this week. Well done!
+            {t('week.allClean')}
           </Typography>
         ) : null}
       </Stack>
@@ -75,13 +77,13 @@ export const ThisWeek = ({
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="h6">{zone}</Typography>
                   <Typography color="text.secondary">
-                    {isMine ? `${member} (you)` : member}
+                    {isMine ? t('common.you', { name: member }) : member}
                   </Typography>
                 </Box>
                 {completion ? (
-                  <Chip color="success" label={`Done ${completion.doneAt}`} />
+                  <Chip color="success" label={t('week.done', { date: completion.doneAt })} />
                 ) : (
-                  <Chip label="Pending" />
+                  <Chip label={t('week.pending')} />
                 )}
               </Stack>
               {isMine ? (
@@ -98,7 +100,7 @@ export const ThisWeek = ({
                       onMarkDone({ weekIndex, zone, member, doneAt: dates[zone] ?? today })
                     }
                   >
-                    {completion ? 'Update date' : 'Mark as done'}
+                    {completion ? t('week.updateDate') : t('week.markDone')}
                   </Button>
                 </Stack>
               ) : null}

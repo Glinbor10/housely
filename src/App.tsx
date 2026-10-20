@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Container, Stack } from '@mui/material'
+import { Box, Container, Stack } from '@mui/material'
 import { InstallHint } from './components/InstallHint'
+import { LanguageSwitch } from './components/LanguageSwitch'
 import { getFirebase } from './firebase/app'
 import { isGoogleUser, type AuthUserInfo } from './firebase/googleAccess'
 import { subscribeAuthUser } from './firebase/googleSignIn'
@@ -46,6 +47,9 @@ const Home = ({ uid }: { uid: string }) => {
 
   return (
     <Stack spacing={2}>
+      <Box sx={{ alignSelf: 'flex-end' }}>
+        <LanguageSwitch />
+      </Box>
       {showHint ? (
         <InstallHint
           onDismiss={() => {

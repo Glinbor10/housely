@@ -1,3 +1,6 @@
+import type { LocalizedError } from '../i18n/describeError'
+import type { MessageKey } from '../i18n/i18n'
+
 export interface AuthUserInfo {
   uid: string
   isAnonymous: boolean
@@ -45,13 +48,16 @@ const MESSAGES: Record<Exclude<GoogleErrorCode, 'cancelled'>, string> = {
   unknown: 'Could not sign in with Google. Try again.',
 }
 
-export class GoogleAccessError extends Error {
+export class GoogleAccessError extends Error implements LocalizedError {
   readonly code: GoogleErrorCode
+  // The screen shows the text in the language of the person; message stays in English for logs
+  readonly messageKey: MessageKey
 
   constructor(code: GoogleErrorCode) {
     super(code === 'cancelled' ? 'Sign-in cancelled.' : MESSAGES[code])
     this.name = 'GoogleAccessError'
     this.code = code
+    this.messageKey = code === 'cancelled' ? 'google.cancelled' : `google.error.${code}`
   }
 }
 

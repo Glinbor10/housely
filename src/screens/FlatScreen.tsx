@@ -25,6 +25,7 @@ import { useAction } from '../hooks/useAction'
 import { useSubscription } from '../hooks/useSubscription'
 import { dismissSaveAccess, isSaveAccessDismissed } from '../storage/preferences'
 import { getBrowserStorage, type Session } from '../storage/session'
+import { useTranslation } from '../i18n/useTranslation'
 
 interface FlatScreenProps {
   uid: string
@@ -35,6 +36,7 @@ interface FlatScreenProps {
 }
 
 export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps) => {
+  const { t } = useTranslation()
   const { db } = getFirebase()
   const { flatId } = session
   const flat = useSubscription<FlatRecord | null>(
@@ -65,7 +67,7 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
   const failure = flat.error ?? members.error ?? completions.error
   const leave = (
     <Button variant="outlined" onClick={onLeave}>
-      Leave this flat on this device
+      {t('flat.leave')}
     </Button>
   )
   // Access was lost (for example, the owner released this identity): the entry that points to the
@@ -78,21 +80,21 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
         onLeave()
       }}
     >
-      Leave this flat on this device
+      {t('flat.leave')}
     </Button>
   )
 
   return failure || (flat.ready && flat.value === null) ? (
     <Stack spacing={2}>
       <Alert severity="error">
-        This flat is not available. You may have lost access to it.
+        {t('flat.unavailable')}
         {failure ? ` (${failure.message})` : ''}
       </Alert>
       {leaveLostFlat}
     </Stack>
   ) : !flat.ready || !members.ready || !completions.ready || flat.value === null ? (
     <Stack sx={{ alignItems: 'center', py: 6 }}>
-      <CircularProgress aria-label="Loading" />
+      <CircularProgress aria-label={t('common.loading')} />
     </Stack>
   ) : (
     <Stack spacing={2}>
@@ -173,6 +175,7 @@ const FlatContent = ({
   onRelease,
   leave,
 }: FlatContentProps) => {
+  const { t } = useTranslation()
   const names = new Map(members.map((member) => [member.id, member.name]))
   const weekIndex = getWeekIndex(new Date(`${flat.startDate}T00:00:00`), now)
   const assignments = getAssignments(
@@ -197,7 +200,7 @@ const FlatContent = ({
       <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
         {flat.name}
       </Typography>
-      <Typography color="text.secondary">Week {weekIndex + 1}</Typography>
+      <Typography color="text.secondary">{t('week.title', { n: weekIndex + 1 })}</Typography>
       <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
       {saveError ? <Alert severity="error">{saveError}</Alert> : null}
       <ThisWeek
@@ -217,7 +220,9 @@ const FlatContent = ({
         }
       />
       {resting.length > 0 ? (
-        <Typography color="text.secondary">Free this week: {resting.join(', ')}</Typography>
+        <Typography color="text.secondary">
+          {t('week.resting', { names: resting.join(', ') })}
+        </Typography>
       ) : null}
       <MembersList
         members={members.map((member) => ({

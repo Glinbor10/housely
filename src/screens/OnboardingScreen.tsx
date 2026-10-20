@@ -17,6 +17,8 @@ import {
 import { GoogleAccessError, isGoogleUser, type AuthUserInfo } from '../firebase/googleAccess'
 import { openGoogle } from '../firebase/googleSignIn'
 import { getBrowserStorage, saveSession, type Session } from '../storage/session'
+import { describeError } from '../i18n/describeError'
+import { useTranslation } from '../i18n/useTranslation'
 
 interface OnboardingScreenProps {
   user: AuthUserInfo
@@ -25,9 +27,6 @@ interface OnboardingScreenProps {
 
 type View = 'welcome' | 'google-create' | 'create' | 'join' | 'my-flats'
 
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : 'Something went wrong. Try again.'
-
 interface FoundFlat {
   flatId: string
   flatName: string
@@ -35,6 +34,7 @@ interface FoundFlat {
 }
 
 export const OnboardingScreen = ({ user, onDone }: OnboardingScreenProps) => {
+  const { t } = useTranslation()
   const [view, setView] = useState<View>('welcome')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +63,7 @@ export const OnboardingScreen = ({ user, onDone }: OnboardingScreenProps) => {
     } catch (failure) {
       // Closing the Google window is a choice, not a problem
       if (!(failure instanceof GoogleAccessError && failure.code === 'cancelled')) {
-        setError(messageOf(failure))
+        setError(describeError(failure))
       }
     } finally {
       setBusy(false)
@@ -105,7 +105,7 @@ export const OnboardingScreen = ({ user, onDone }: OnboardingScreenProps) => {
       const { db } = getFirebase()
       const flat = await findFlatByCode(db, code)
       if (flat === null) {
-        setError('That invite code does not exist. Check it and try again.')
+        setError(t('join.unknownCode'))
         return
       }
       const members = await listMembers(db, flat.flatId)

@@ -18,7 +18,7 @@ import {
   validateDraft,
   type FlatDraft,
 } from '../domain/flat'
-
+import type { LocalizedError } from '../i18n/describeError'
 export interface FlatRecord {
   id: string
   name: string
@@ -89,7 +89,10 @@ const pickFreeCode = async (db: Firestore, generateCode: () => string): Promise<
   throw new Error('Could not find a free invite code')
 }
 
-export class FlatLimitError extends Error {
+export class FlatLimitError extends Error implements LocalizedError {
+  readonly messageKey = 'create.flatLimit'
+  readonly messageParams = { max: MAX_FLATS_PER_IDENTITY }
+
   constructor() {
     super(
       `You can create up to ${MAX_FLATS_PER_IDENTITY} flats from this device. Join an existing flat with its invite code instead.`,
