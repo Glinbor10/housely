@@ -72,8 +72,11 @@ const toAccessError = (error: unknown): GoogleAccessError =>
     ? error
     : new GoogleAccessError(CODES[errorCode(error)] ?? 'unknown')
 
+// Firebase provider id (not a URL): compared as a whole list entry
+export const GOOGLE_PROVIDER_ID = 'google.com'
+
 export const isGoogleUser = (user: AuthUserInfo | null): boolean =>
-  user !== null && user.providerIds.includes('google.com')
+  user !== null && user.providerIds.some((id) => id === GOOGLE_PROVIDER_ID)
 
 // Decides what "continue with Google" means for the person in front of the screen.
 export interface GoogleAccessOptions {

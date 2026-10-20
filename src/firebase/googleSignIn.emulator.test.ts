@@ -10,7 +10,7 @@ import {
   type Auth,
 } from 'firebase/auth'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { GoogleAccessError } from './googleAccess'
+import { GoogleAccessError, isGoogleUser } from './googleAccess'
 import { openGoogle, subscribeAuthUser, type GoogleOps } from './googleSignIn'
 
 // Runs against the Auth emulator: `npm run test:rules`. The emulator accepts fake Google
@@ -105,8 +105,7 @@ describe('subscribeAuthUser', () => {
   it('reports the user and its providers, and follows the link to Google', async () => {
     const seen: Array<{ anonymous: boolean; google: boolean }> = []
     const unsubscribe = subscribeAuthUser(auth, (user) => {
-      if (user)
-        seen.push({ anonymous: user.isAnonymous, google: user.providerIds.includes('google.com') })
+      if (user) seen.push({ anonymous: user.isAnonymous, google: isGoogleUser(user) })
     })
     await signInAnonymously(auth)
     await openGoogle(auth, opsFor('watcher'))
