@@ -50,6 +50,13 @@ describe('hosting security headers', () => {
     expect(images).not.toContain('https:')
   })
 
+  it('allows the script of the Google sign-in and no other third party script', () => {
+    expect([...(directives['script-src'] ?? [])].sort()).toEqual([
+      "'self'",
+      'https://apis.google.com',
+    ])
+  })
+
   it('never allows inline or eval scripts', () => {
     const scripts = directives['script-src'] ?? []
     expect(scripts).toContain("'self'")

@@ -12,7 +12,9 @@ import {
   createFlat,
   FlatLimitError,
   deleteCompletion,
-  findFlatIdByCode,
+  findFlatByCode,
+  forgetFlat,
+  listMyFlats,
   joinFlat,
   listMembers,
   releaseMember,
@@ -43,8 +45,16 @@ let env: RulesTestEnvironment
 // modular functions used by the repository, so a single cast bridges the type difference.
 const db = (uid: string) => env.authenticatedContext(uid).firestore() as unknown as Firestore
 
+// Identity with Google linked, which is what creating a flat requires
+const googleDb = (uid: string) =>
+  env
+    .authenticatedContext(uid, {
+      firebase: { sign_in_provider: 'google.com', identities: { 'google.com': [`g-${uid}`] } },
+    })
+    .firestore() as unknown as Firestore
+
 const create = (code = 'ABC123') =>
-  createFlat(db(OWNER), {
+  createFlat(googleDb(OWNER), {
     draft,
     ownerUid: OWNER,
     ownerName: 'Ana',
@@ -132,7 +142,7 @@ describe('createFlat', () => {
       })
     })
     const codes = ['TAKEN1', 'FRESH2']
-    const { inviteCode } = await createFlat(db(OWNER), {
+    const { inviteCode } = await createFlat(googleDb(OWNER), {
       draft,
       ownerUid: OWNER,
       ownerName: 'Ana',
@@ -143,7 +153,7 @@ describe('createFlat', () => {
 
   it('rejects an owner name that is not one of the members', async () => {
     await expect(
-      createFlat(db(OWNER), {
+      createFlat(googleDb(OWNER), {
         draft,
         ownerUid: OWNER,
         ownerName: 'Zed',
@@ -154,7 +164,7 @@ describe('createFlat', () => {
 
   it('rejects an invalid draft before touching Firestore', async () => {
     await expect(
-      createFlat(db(OWNER), {
+      createFlat(googleDb(OWNER), {
         draft: { ...draft, zones: [] },
         ownerUid: OWNER,
         ownerName: 'Ana',
@@ -166,7 +176,7 @@ describe('createFlat', () => {
 
 describe('limits per identity', () => {
   const createWithCode = (uid: string, code: string) =>
-    createFlat(db(uid), { draft, ownerUid: uid, ownerName: 'Ana', generateCode: () => code })
+    createFlat(googleDb(uid), { draft, ownerUid: uid, ownerName: 'Ana', generateCode: () => code })
 
   it('stores members with the ids m0, m1, m2 that the rules require', async () => {
     const { flatId } = await create()
@@ -187,7 +197,7 @@ describe('limits per identity', () => {
     await createWithCode(OWNER, 'LIMIT3')
     await expect(createWithCode(OWNER, 'LIMIT4')).rejects.toBeInstanceOf(FlatLimitError)
     await expect(createWithCode(OWNER, 'LIMIT4')).rejects.toThrow(/up to 3 flats/i)
-    expect(await findFlatIdByCode(db(OWNER), 'LIMIT4')).toBeNull()
+    expect(await findFlatByCode(db(OWNER), 'LIMIT4')).toBeNull()
   })
 
   it('does not count the flats of other identities', async () => {
@@ -198,14 +208,14 @@ describe('limits per identity', () => {
   })
 })
 
-describe('findFlatIdByCode', () => {
+describe('findFlatByCode', () => {
   it('resolves a code ignoring case and spaces', async () => {
     const { flatId } = await create()
-    expect(await findFlatIdByCode(db(STRANGER), ' abc123 ')).toBe(flatId)
+    expect(await findFlatByCode(db(STRANGER), ' abc123 ')).toEqual({ flatId, flatName: 'My flat' })
   })
 
   it('returns null for an unknown code', async () => {
-    expect(await findFlatIdByCode(db(STRANGER), 'NOPE22')).toBeNull()
+    expect(await findFlatByCode(db(STRANGER), 'NOPE22')).toBeNull()
   })
 })
 
@@ -221,7 +231,9 @@ describe('joinFlat', () => {
       ),
     )
 
-    await assertSucceeds(joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE }))
+    await assertSucceeds(
+      joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE, flatName: 'My flat' }),
+    )
 
     const flat = await waitFor<FlatRecord | null>(
       (callback) => subscribeFlat(db(FLATMATE), flatId, callback, () => {}),
@@ -234,7 +246,43 @@ describe('joinFlat', () => {
 
   it('rejects claiming a member that already belongs to someone', async () => {
     const { flatId, memberId } = await create()
-    await assertFails(joinFlat(db(STRANGER), { flatId, memberId, uid: STRANGER }))
+    await assertFails(
+      joinFlat(db(STRANGER), { flatId, memberId, uid: STRANGER, flatName: 'My flat' }),
+    )
+  })
+})
+
+describe('finding your flats', () => {
+  it('lists the flats a person created, so they are found again from a new phone', async () => {
+    const { flatId, memberId } = await create()
+    expect(await listMyFlats(googleDb(OWNER), OWNER)).toEqual([
+      { flatId, memberId, flatName: 'My flat' },
+    ])
+  })
+
+  it('lists the flats a person joined, with the name that the invite code carried', async () => {
+    const { flatId } = await create()
+    const members = await listMembers(db(FLATMATE), flatId)
+    const ben = members.find((member) => member.name === 'Ben') as MemberRecord
+    await joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE, flatName: 'My flat' })
+    expect(await listMyFlats(db(FLATMATE), FLATMATE)).toEqual([
+      { flatId, memberId: ben.id, flatName: 'My flat' },
+    ])
+  })
+
+  it('lists nothing for a person without flats', async () => {
+    expect(await listMyFlats(db(STRANGER), STRANGER)).toEqual([])
+  })
+
+  it('never shows the flats of somebody else', async () => {
+    await create()
+    await assertFails(listMyFlats(db(STRANGER), OWNER))
+  })
+
+  it('forgets a stale entry', async () => {
+    const { flatId } = await create()
+    await forgetFlat(googleDb(OWNER), OWNER, flatId)
+    expect(await listMyFlats(googleDb(OWNER), OWNER)).toEqual([])
   })
 })
 
@@ -243,7 +291,7 @@ describe('releaseMember', () => {
     const { flatId } = await create()
     const members = await listMembers(db(FLATMATE), flatId)
     const ben = members.find((member) => member.name === 'Ben') as MemberRecord
-    await joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE })
+    await joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE, flatName: 'My flat' })
     return { flatId, ben }
   }
 
@@ -259,7 +307,9 @@ describe('releaseMember', () => {
       ),
     )
 
-    await assertSucceeds(joinFlat(db(STRANGER), { flatId, memberId: ben.id, uid: STRANGER }))
+    await assertSucceeds(
+      joinFlat(db(STRANGER), { flatId, memberId: ben.id, uid: STRANGER, flatName: 'My flat' }),
+    )
   })
 
   it('is only allowed to the owner and never on the own member', async () => {

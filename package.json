@@ -27,8 +27,9 @@
     "dev:ci": "vite --mode ci",
     "test:coverage": "vitest run --coverage",
     "icons": "node scripts/generate-icons.mjs",
-    "e2e": "playwright test -c e2e",
-    "screenshots": "node scripts/screenshots.mjs"
+    "e2e": "playwright test -c e2e/deployed.config.ts",
+    "screenshots": "node scripts/screenshots.mjs",
+    "e2e:emulator": "npx -y firebase-tools@15.34.0 --config firebase/firebase.json emulators:exec --only auth,firestore --project demo-housely \"playwright test -c e2e/emulator.config.ts\""
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

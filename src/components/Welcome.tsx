@@ -3,9 +3,10 @@ import { Box, Button, Stack, Typography } from '@mui/material'
 interface WelcomeProps {
   onCreate: () => void
   onJoin: () => void
+  onSignIn: () => void
 }
 
-export const Welcome = ({ onCreate, onJoin }: WelcomeProps) => (
+export const Welcome = ({ onCreate, onJoin, onSignIn }: WelcomeProps) => (
   <Stack spacing={3} sx={{ alignItems: 'center', textAlign: 'center', pt: 4 }}>
     <Box
       component="img"
@@ -29,6 +30,7 @@ export const Welcome = ({ onCreate, onJoin }: WelcomeProps) => (
       <Button variant="outlined" size="large" onClick={onJoin}>
         Join a flat
       </Button>
+      <Button onClick={onSignIn}>I already have a flat</Button>
     </Stack>
   </Stack>
 )

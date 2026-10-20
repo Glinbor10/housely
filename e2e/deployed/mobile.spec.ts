@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { collectProblems } from './support'
+import { collectProblems } from '../support'
 
 test('is installable: valid manifest, reachable icons, iOS tags and a service worker', async ({
   page,
@@ -25,6 +25,24 @@ test('is installable: valid manifest, reachable icons, iOS tags and a service wo
   await page.evaluate(() => navigator.serviceWorker.ready)
   await page.reload()
   expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+})
+
+test('the app shell opens without a connection once the service worker is installed', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /create a flat/i }).waitFor()
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  // A first reload makes the service worker control the page; then the network goes away
+  await page.reload()
+  await page.getByRole('button', { name: /create a flat/i }).waitFor()
+
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.getByRole('button', { name: /create a flat/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /join a flat/i })).toBeVisible()
+  await context.setOffline(false)
 })
 
 test('is comfortable on a phone: 44px touch targets and no horizontal scroll', async ({ page }) => {

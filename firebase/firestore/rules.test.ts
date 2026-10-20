@@ -15,7 +15,7 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 const FLAT = 'flat1'
 const OWNER = 'owner-uid'
@@ -34,6 +34,15 @@ let env: RulesTestEnvironment
 
 const db = (uid: string | null) =>
   (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).firestore()
+
+// An identity with Google linked: what creating a flat requires. Anonymous identities have no
+// Google entry in the identities claim of their token.
+const googleDb = (uid: string) =>
+  env
+    .authenticatedContext(uid, {
+      firebase: { sign_in_provider: 'google.com', identities: { 'google.com': [`g-${uid}`] } },
+    })
+    .firestore()
 
 // Seeds a flat with an owner member and one unclaimed member, bypassing the rules.
 const seedFlat = () =>
@@ -55,7 +64,11 @@ const seedFlat = () =>
       order: 1,
     })
     await setDoc(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm-owner' })
-    await setDoc(doc(firestore, 'inviteCodes/ABC123'), { flatId: FLAT, ownerUid: OWNER })
+    await setDoc(doc(firestore, 'inviteCodes/ABC123'), {
+      flatId: FLAT,
+      ownerUid: OWNER,
+      flatName: 'My flat',
+    })
   })
 
 beforeAll(async () => {
@@ -74,7 +87,36 @@ beforeEach(async () => {
 })
 
 describe('flats', () => {
-  it('lets a signed-in user create a flat with their own member and membership', async () => {
+  it('lets a Google user create a flat with their own member and membership', async () => {
+    const firestore = googleDb(OWNER)
+    const batch = writeBatch(firestore)
+    batch.set(doc(firestore, `flats/${FLAT}`), flatData)
+    batch.set(doc(firestore, `flats/${FLAT}/members/m0`), {
+      name: 'Ana',
+      color: '#1976d2',
+      uid: OWNER,
+      active: true,
+      order: 0,
+    })
+    batch.set(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm0' })
+    batch.set(doc(firestore, 'inviteCodes/ABC123'), {
+      flatId: FLAT,
+      ownerUid: OWNER,
+      flatName: 'My flat',
+    })
+    batch.set(doc(firestore, `owners/${OWNER}`), { flatCount: 1 })
+    await assertSucceeds(batch.commit())
+  })
+
+  it('rejects creating a flat when unauthenticated', async () => {
+    await assertFails(setDoc(doc(db(null), `flats/${FLAT}`), flatData))
+  })
+
+  it('rejects creating a flat owned by someone else', async () => {
+    await assertFails(setDoc(doc(googleDb(STRANGER), `flats/${FLAT}`), flatData))
+  })
+
+  it('rejects an anonymous identity creating a flat, whatever else is right', async () => {
     const firestore = db(OWNER)
     const batch = writeBatch(firestore)
     batch.set(doc(firestore, `flats/${FLAT}`), flatData)
@@ -86,21 +128,24 @@ describe('flats', () => {
       order: 0,
     })
     batch.set(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm0' })
-    batch.set(doc(firestore, 'inviteCodes/ABC123'), { flatId: FLAT, ownerUid: OWNER })
+    batch.set(doc(firestore, 'inviteCodes/ABC123'), {
+      flatId: FLAT,
+      ownerUid: OWNER,
+      flatName: 'My flat',
+    })
     batch.set(doc(firestore, `owners/${OWNER}`), { flatCount: 1 })
-    await assertSucceeds(batch.commit())
+    await assertFails(batch.commit())
   })
 
-  it('rejects creating a flat when unauthenticated', async () => {
-    await assertFails(setDoc(doc(db(null), `flats/${FLAT}`), flatData))
-  })
-
-  it('rejects creating a flat owned by someone else', async () => {
-    await assertFails(setDoc(doc(db(STRANGER), `flats/${FLAT}`), flatData))
+  it('rejects a token that only claims to have signed in with Google', async () => {
+    const liar = env
+      .authenticatedContext(OWNER, { firebase: { sign_in_provider: 'google.com', identities: {} } })
+      .firestore()
+    await assertFails(setDoc(doc(liar, `flats/${FLAT}`), flatData))
   })
 
   it('rejects a flat with invalid data', async () => {
-    const firestore = db(OWNER)
+    const firestore = googleDb(OWNER)
     await assertFails(setDoc(doc(firestore, `flats/${FLAT}`), { ...flatData, name: '' }))
     await assertFails(setDoc(doc(firestore, `flats/${FLAT}`), { ...flatData, zones: [] }))
     await assertFails(setDoc(doc(firestore, `flats/${FLAT}`), { ...flatData, extra: true }))
@@ -148,12 +193,12 @@ describe('abuse limits', () => {
     counter: number,
     isUpdate: boolean,
   ) => {
-    const firestore = db(uid)
+    const firestore = googleDb(uid)
     const batch = writeBatch(firestore)
     batch.set(doc(firestore, `flats/${flatId}`), { ...flatData, ownerUid: uid, inviteCode: code })
     batch.set(doc(firestore, `flats/${flatId}/members/m0`), ownerMember(uid))
     batch.set(doc(firestore, `flats/${flatId}/users/${uid}`), { memberId: 'm0' })
-    batch.set(doc(firestore, `inviteCodes/${code}`), { flatId, ownerUid: uid })
+    batch.set(doc(firestore, `inviteCodes/${code}`), { flatId, ownerUid: uid, flatName: 'My flat' })
     if (isUpdate) {
       batch.update(doc(firestore, `owners/${uid}`), { flatCount: counter })
     } else {
@@ -175,7 +220,7 @@ describe('abuse limits', () => {
   })
 
   it('rejects creating a flat without touching the counter', async () => {
-    const firestore = db(OWNER)
+    const firestore = googleDb(OWNER)
     const batch = writeBatch(firestore)
     batch.set(doc(firestore, 'flats/f1'), flatData)
     batch.set(doc(firestore, 'flats/f1/members/m0'), ownerMember(OWNER))
@@ -216,6 +261,108 @@ describe('abuse limits', () => {
     await assertFails(
       setDoc(doc(db(OWNER), `flats/${FLAT}/completions/1041_Kitchen`), completion(1041)),
     )
+  })
+})
+
+describe('finding your flats (userFlats)', () => {
+  const entry = { memberId: 'm-free', flatName: 'My flat' }
+
+  const join = async (uid: string) => {
+    const firestore = db(uid)
+    const batch = writeBatch(firestore)
+    batch.update(doc(firestore, `flats/${FLAT}/members/m-free`), { uid })
+    batch.set(doc(firestore, `flats/${FLAT}/users/${uid}`), { memberId: 'm-free' })
+    batch.set(doc(firestore, `userFlats/${uid}/flats/${FLAT}`), entry)
+    return batch.commit()
+  }
+
+  it('is written together with the membership when someone joins', async () => {
+    await seedFlat()
+    await assertSucceeds(join(FLATMATE))
+    await assertSucceeds(getDoc(doc(db(FLATMATE), `userFlats/${FLATMATE}/flats/${FLAT}`)))
+  })
+
+  it('lets a person list only their own flats', async () => {
+    await seedFlat()
+    await assertSucceeds(join(FLATMATE))
+    await assertSucceeds(getDocs(collection(db(FLATMATE), `userFlats/${FLATMATE}/flats`)))
+    await assertFails(getDocs(collection(db(STRANGER), `userFlats/${FLATMATE}/flats`)))
+    await assertFails(getDoc(doc(db(null), `userFlats/${FLATMATE}/flats/${FLAT}`)))
+  })
+
+  it('rejects an entry for another person or for a flat the person is not in', async () => {
+    await seedFlat()
+    await assertFails(setDoc(doc(db(STRANGER), `userFlats/${FLATMATE}/flats/${FLAT}`), entry))
+    await assertFails(setDoc(doc(db(STRANGER), `userFlats/${STRANGER}/flats/${FLAT}`), entry))
+  })
+
+  it('rejects an entry that points to a member the person does not hold', async () => {
+    await seedFlat()
+    const firestore = db(FLATMATE)
+    const batch = writeBatch(firestore)
+    batch.update(doc(firestore, `flats/${FLAT}/members/m-free`), { uid: FLATMATE })
+    batch.set(doc(firestore, `flats/${FLAT}/users/${FLATMATE}`), { memberId: 'm-free' })
+    batch.set(doc(firestore, `userFlats/${FLATMATE}/flats/${FLAT}`), {
+      memberId: 'm-owner',
+      flatName: 'My flat',
+    })
+    await assertFails(batch.commit())
+  })
+
+  it('lets a person forget a stale entry of their own', async () => {
+    await seedFlat()
+    await assertSucceeds(join(FLATMATE))
+    await assertFails(deleteDoc(doc(db(STRANGER), `userFlats/${FLATMATE}/flats/${FLAT}`)))
+    await assertSucceeds(deleteDoc(doc(db(FLATMATE), `userFlats/${FLATMATE}/flats/${FLAT}`)))
+  })
+
+  it('only accepts the expected fields', async () => {
+    await seedFlat()
+    const firestore = db(FLATMATE)
+    const batch = writeBatch(firestore)
+    batch.update(doc(firestore, `flats/${FLAT}/members/m-free`), { uid: FLATMATE })
+    batch.set(doc(firestore, `flats/${FLAT}/users/${FLATMATE}`), { memberId: 'm-free' })
+    batch.set(doc(firestore, `userFlats/${FLATMATE}/flats/${FLAT}`), { ...entry, extra: true })
+    await assertFails(batch.commit())
+  })
+})
+
+describe('invite codes', () => {
+  const create = (uid: string, flatName: string, extra: Record<string, unknown> = {}) => {
+    const firestore = googleDb(uid)
+    const batch = writeBatch(firestore)
+    batch.set(doc(firestore, 'flats/f1'), { ...flatData, ownerUid: uid, inviteCode: 'DDDDD1' })
+    batch.set(doc(firestore, 'flats/f1/members/m0'), {
+      name: 'Ana',
+      color: '#1976d2',
+      uid,
+      active: true,
+      order: 0,
+    })
+    batch.set(doc(firestore, `flats/f1/users/${uid}`), { memberId: 'm0' })
+    batch.set(doc(firestore, 'inviteCodes/DDDDD1'), {
+      flatId: 'f1',
+      ownerUid: uid,
+      flatName,
+      ...extra,
+    })
+    batch.set(doc(firestore, `owners/${uid}`), { flatCount: 1 })
+    return batch.commit()
+  }
+
+  it('carries the name of the flat, so whoever joins sees which flat it is', async () => {
+    await assertSucceeds(create(OWNER, 'My flat'))
+    const code = await getDoc(doc(db(STRANGER), 'inviteCodes/DDDDD1'))
+    expect(code.data()).toEqual({ flatId: 'f1', ownerUid: OWNER, flatName: 'My flat' })
+  })
+
+  it('must match the real name of the flat and be a short text', async () => {
+    await assertFails(create(OWNER, 'Another name'))
+    await assertFails(create(OWNER, ''))
+  })
+
+  it('accepts no other fields', async () => {
+    await assertFails(create(OWNER, 'My flat', { extra: true }))
   })
 })
 

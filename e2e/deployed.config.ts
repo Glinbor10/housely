@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// End-to-end tests run against a deployed environment, so they exercise the real build, the
-// Content-Security-Policy, the service worker and Firebase. Usage:
+// Read-only tests against a deployed environment: they exercise the real build, the headers, the
+// service worker and Firebase without writing data (creating a flat needs a real Google account,
+// so those flows run against the emulators, see emulator.config.ts). Usage:
 //   E2E_BASE_URL=https://housely-ci.web.app npm run e2e
 const baseURL = process.env.E2E_BASE_URL
 if (!baseURL) {
@@ -9,11 +10,10 @@ if (!baseURL) {
 }
 
 export default defineConfig({
-  testDir: '.',
+  testDir: './deployed',
   timeout: 90_000,
   expect: { timeout: 20_000 },
   retries: process.env.CI ? 1 : 0,
-  // Each test creates its own flat, so tests can run side by side
   fullyParallel: true,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL, trace: 'retain-on-failure', screenshot: 'only-on-failure' },

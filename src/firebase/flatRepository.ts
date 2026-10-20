@@ -141,16 +141,48 @@ export const createFlat = async (db: Firestore, input: CreateFlatInput): Promise
   })
 
   batch.set(doc(flat, 'users', input.ownerUid), { memberId: ownerMemberId })
-  batch.set(doc(db, 'inviteCodes', inviteCode), { flatId: flat.id, ownerUid: input.ownerUid })
+  batch.set(doc(db, 'inviteCodes', inviteCode), {
+    flatId: flat.id,
+    ownerUid: input.ownerUid,
+    flatName: draft.name,
+  })
   batch.set(ownerCounter, { flatCount: createdBefore + 1 })
+  // The index that lets the owner find this flat again from a new phone
+  batch.set(doc(db, 'userFlats', input.ownerUid, 'flats', flat.id), {
+    memberId: ownerMemberId,
+    flatName: draft.name,
+  })
   await batch.commit()
   return { flatId: flat.id, memberId: ownerMemberId, inviteCode }
 }
 
-export const findFlatIdByCode = async (db: Firestore, code: string): Promise<string | null> => {
-  const snapshot = await getDoc(doc(db, 'inviteCodes', normalizeCode(code)))
-  return snapshot.exists() ? (snapshot.data().flatId as string) : null
+export interface FoundFlat {
+  flatId: string
+  flatName: string
 }
+
+// The invite code carries the id and the name of the flat, readable before being a member.
+export const findFlatByCode = async (db: Firestore, code: string): Promise<FoundFlat | null> => {
+  const snapshot = await getDoc(doc(db, 'inviteCodes', normalizeCode(code)))
+  if (!snapshot.exists()) return null
+  const { flatId, flatName } = snapshot.data()
+  return { flatId: flatId as string, flatName: flatName as string }
+}
+
+export interface MyFlat {
+  flatId: string
+  memberId: string
+  flatName: string
+}
+
+export const listMyFlats = async (db: Firestore, uid: string): Promise<MyFlat[]> => {
+  const snapshot = await getDocs(collection(db, 'userFlats', uid, 'flats'))
+  return snapshot.docs.map((entry) => ({ flatId: entry.id, ...entry.data() }) as MyFlat)
+}
+
+// Forgets an entry that points to a flat the person can no longer open (for example, after being released).
+export const forgetFlat = (db: Firestore, uid: string, flatId: string): Promise<void> =>
+  deleteDoc(doc(db, 'userFlats', uid, 'flats', flatId))
 
 const byOrder = (a: MemberRecord, b: MemberRecord): number => a.order - b.order
 
@@ -164,12 +196,16 @@ export const listMembers = async (db: Firestore, flatId: string): Promise<Member
 // Claiming the member and creating the membership must succeed or fail together.
 export const joinFlat = async (
   db: Firestore,
-  input: { flatId: string; memberId: string; uid: string },
+  input: { flatId: string; memberId: string; uid: string; flatName: string },
 ): Promise<void> => {
   const flat = flatRef(db, input.flatId)
   const batch = writeBatch(db)
   batch.update(doc(flat, 'members', input.memberId), { uid: input.uid })
   batch.set(doc(flat, 'users', input.uid), { memberId: input.memberId })
+  batch.set(doc(db, 'userFlats', input.uid, 'flats', input.flatId), {
+    memberId: input.memberId,
+    flatName: input.flatName,
+  })
   await batch.commit()
 }
 
