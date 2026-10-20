@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { collectProblems, createFlat, isBenignNetworkNoise } from '../support'
+import { collectProblems, createFlat, isBenignNetworkNoise, openTab } from '../support'
 
 const uniqueName = () => `E2E ${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
@@ -52,6 +52,7 @@ test('a flat is created, remembered, joined from a second phone and kept in sync
 
 test('the owner adds the Tricount link and flatmates can open it', async ({ page }) => {
   await createFlat(page, uniqueName())
+  await openTab(page, 'Flat')
   await page.getByRole('button', { name: /add tricount link/i }).click()
   await page.getByLabel('Tricount link').fill('http://tricount.com/abc')
   await page.getByRole('button', { name: /^save$/i }).click()
@@ -120,6 +121,7 @@ test('the owner releases a flatmate who lost their phone, and they rejoin from a
   }
 
   const oldPhone = await join()
+  await openTab(page, 'People')
   await expect(page.getByRole('button', { name: /release ben/i })).toBeVisible()
   // The owner can never release themselves
   await expect(page.getByRole('button', { name: /release ana/i })).toHaveCount(0)

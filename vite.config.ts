@@ -17,7 +17,7 @@ export default defineConfig({
       manifest,
       includeAssets: ['favicon.svg', 'logo.svg', 'icons/apple-touch-icon.png'],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}'],
         navigateFallback: '/index.html',
         // Firebase Auth helper pages are served by Hosting and must never be answered from the cache
         navigateFallbackDenylist: [/^\/__\//],

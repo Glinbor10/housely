@@ -17,6 +17,8 @@ export default defineConfig({
   workers: 2,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
+    // The app follows the language of the device: tests run in English wherever they are launched
+    locale: 'en-US',
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

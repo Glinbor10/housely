@@ -1,5 +1,6 @@
-import { Box, Button, Stack, Typography } from '@mui/material'
+import { Button, Stack, Typography } from '@mui/material'
 import { useTranslation } from '../i18n/useTranslation'
+import { Mascot } from './Mascot'
 
 interface WelcomeProps {
   onCreate: () => void
@@ -11,12 +12,7 @@ export const Welcome = ({ onCreate, onJoin, onSignIn }: WelcomeProps) => {
   const { t } = useTranslation()
   return (
     <Stack spacing={3} sx={{ alignItems: 'center', textAlign: 'center', pt: 4 }}>
-      <Box
-        component="img"
-        src="/logo.svg"
-        alt={t('welcome.logoAlt')}
-        sx={{ width: 112, height: 112, borderRadius: 4, boxShadow: 3 }}
-      />
+      <Mascot mood="happy" size={132} />
       <Stack spacing={1}>
         <Typography variant="h3" component="h1" sx={{ fontWeight: 700 }}>
           Housely
