@@ -55,7 +55,7 @@ service cloud.firestore {
 
     function isValidCompletion(flatId, completionId, data) {
       return data.keys().hasOnly(['weekIndex', 'zone', 'memberId', 'doneAt'])
-        && data.weekIndex is int && data.weekIndex >= 0
+        && data.weekIndex is int && data.weekIndex >= 0 && data.weekIndex <= 1040
         && isShortText(data.zone, 60)
         && data.zone in get(flatPath(flatId)).data.zones
         && completionId == string(data.weekIndex) + '_' + data.zone
@@ -67,9 +67,15 @@ service cloud.firestore {
       // Flats are fetched by id; listing them is never allowed.
       allow get: if isMember(flatId);
       allow list: if false;
+      // Creating a flat must bump the owner counter by exactly one in the same batch, which is how
+      // the limit per identity is enforced (see /owners below).
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
-        && isValidFlat(request.resource.data);
+        && isValidFlat(request.resource.data)
+        && getAfter(/databases/$(database)/documents/owners/$(request.auth.uid)).data.flatCount
+          == (exists(/databases/$(database)/documents/owners/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/owners/$(request.auth.uid)).data.flatCount
+            : 0) + 1;
       allow update: if isOwner(flatId)
         && request.resource.data.ownerUid == resource.data.ownerUid
         && isValidFlat(request.resource.data);
@@ -102,7 +108,11 @@ service cloud.firestore {
       // The flat id is a random id only reachable through an invite code.
       match /members/{memberId} {
         allow read: if signedIn();
-        allow create: if isOwnerAfter(flatId) && isValidMember(request.resource.data);
+        // Ids are m0 to m19 and match the order, which caps a flat at 20 people.
+        allow create: if isOwnerAfter(flatId)
+          && isValidMember(request.resource.data)
+          && request.resource.data.order < 20
+          && memberId == 'm' + string(request.resource.data.order);
         allow update: if (
             // The owner edits a member. The uid can only be kept or released (set to null), and
             // never for the owner's own member.
@@ -129,6 +139,23 @@ service cloud.firestore {
         allow delete: if isMember(flatId)
           && resource.data.memberId == memberIdOf(flatId);
       }
+    }
+
+    // How many flats an identity has created: at most 3. It is only ever incremented by one, and
+    // flats are never deleted, so the counter never goes down.
+    match /owners/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['flatCount'])
+        && request.resource.data.flatCount == 1;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['flatCount'])
+        && request.resource.data.flatCount == resource.data.flatCount + 1
+        && request.resource.data.flatCount <= 3;
+      allow delete: if false;
     }
 
     // The invite code is the capability to find a flat. It can be read but never listed.

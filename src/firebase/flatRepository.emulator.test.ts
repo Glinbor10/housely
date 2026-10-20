@@ -4,12 +4,13 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, setDoc, type Firestore } from 'firebase/firestore'
+import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { FlatDraft } from '../domain/flat'
 import rules from '../../firebase/firestore/firestore.rules?raw'
 import {
   createFlat,
+  FlatLimitError,
   deleteCompletion,
   findFlatIdByCode,
   joinFlat,
@@ -160,6 +161,40 @@ describe('createFlat', () => {
         generateCode: () => 'ABC123',
       }),
     ).rejects.toThrow(/zones-required/)
+  })
+})
+
+describe('limits per identity', () => {
+  const createWithCode = (uid: string, code: string) =>
+    createFlat(db(uid), { draft, ownerUid: uid, ownerName: 'Ana', generateCode: () => code })
+
+  it('stores members with the ids m0, m1, m2 that the rules require', async () => {
+    const { flatId } = await create()
+    const members = await listMembers(db(OWNER), flatId)
+    expect(members.map((member) => member.id)).toEqual(['m0', 'm1', 'm2'])
+  })
+
+  it('counts the flats created by an identity', async () => {
+    await createWithCode(OWNER, 'LIMIT1')
+    await createWithCode(OWNER, 'LIMIT2')
+    const counter = await getDoc(doc(db(OWNER), `owners/${OWNER}`))
+    expect(counter.data()).toEqual({ flatCount: 2 })
+  })
+
+  it('refuses a fourth flat with an explanation, before writing anything', async () => {
+    await createWithCode(OWNER, 'LIMIT1')
+    await createWithCode(OWNER, 'LIMIT2')
+    await createWithCode(OWNER, 'LIMIT3')
+    await expect(createWithCode(OWNER, 'LIMIT4')).rejects.toBeInstanceOf(FlatLimitError)
+    await expect(createWithCode(OWNER, 'LIMIT4')).rejects.toThrow(/up to 3 flats/i)
+    expect(await findFlatIdByCode(db(OWNER), 'LIMIT4')).toBeNull()
+  })
+
+  it('does not count the flats of other identities', async () => {
+    await createWithCode(OWNER, 'LIMIT1')
+    await createWithCode(OWNER, 'LIMIT2')
+    await createWithCode(OWNER, 'LIMIT3')
+    await expect(createWithCode(FLATMATE, 'OTHER1')).resolves.toBeDefined()
   })
 })
 

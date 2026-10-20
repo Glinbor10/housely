@@ -8,7 +8,7 @@ The zone assignment is *not stored*: it is computed with `member = members[(week
 ----
 flats/{flatId}
   name, startDate, zones[], tricountUrl (optional, https on tricount.com only), inviteCode, createdAt
-flats/{flatId}/members/{memberId}
+flats/{flatId}/members/m{order}
   name, color, uid (anonymous identity that claimed it, or null), active, order (position in the rotation)
 flats/{flatId}/users/{uid}
   memberId (membership: links an anonymous identity to its member)
@@ -16,6 +16,8 @@ flats/{flatId}/completions/{weekIndex}_{zone}
   weekIndex, zone, memberId, doneAt (YYYY-MM-DD)
 inviteCodes/{code}
   flatId
+owners/{uid}
+  flatCount (flats created by this identity, at most 3)
 ----
 
 == Modeling decisions
@@ -23,6 +25,8 @@ inviteCodes/{code}
 * `order` keeps the order in which the members were entered: the rotation depends on it and Firestore does not guarantee any order by identifier.
 * `active` allows deactivating a member without breaking the history.
 * `uid` links a member to the anonymous identity of their device.
+* Member ids are `m0` to `m19` and must match `order`: this is how the rules cap a flat at 20 people, because a collection cannot be counted in a rule.
+* `owners/{uid}` counts the flats an identity created. A flat can only be created in a batch that raises the counter by exactly one, and the counter cannot exceed 3.
 
 == Access rules (NFR-02)
 Implemented in `firebase/firestore/firestore.rules` and verified with tests on the emulator (`npm run test:rules`).
@@ -33,6 +37,10 @@ Implemented in `firebase/firestore/firestore.rules` and verified with tests on t
 . Only the owner edits the flat and adds or modifies members.
 . Completions: a member only records, corrects or deletes their own, for an existing zone, with a valid date and a `week_zone` identifier.
 . Invite codes: they can be read, not listed.
+. Abuse limits: at most 3 flats per identity, at most 20 people per flat and completion weeks up to 1040 (about 20 years).
+
+=== Limits and their reach
+With anonymous sign-in, an identity is in practice a browser profile on a device. The limits bound what each identity and each flat can hold and prevent accidents, but they do not stop a determined attacker, because a new anonymous identity is free. The real protection against abuse is Firebase App Check and quota alerts (issue https://github.com/Glinbor10/housely/issues/20[#20]).
 
 === Conscious trade-off
 Member names (`members`) are readable by any authenticated user, so that whoever joins can pick theirs before becoming a member. The flat identifier is random and is only obtained through the invite code. The rest of the flat's data is not exposed.
