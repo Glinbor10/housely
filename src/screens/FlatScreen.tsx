@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { InviteCode } from '../components/InviteCode'
 import { MembersList } from '../components/MembersList'
 import { ThisWeek } from '../components/ThisWeek'
 import { TricountLink } from '../components/TricountLink'
@@ -152,16 +153,18 @@ const FlatContent = ({
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h4">{flat.name}</Typography>
-      <Typography color="text.secondary">
-        Week {weekIndex + 1} · invite code <strong>{flat.inviteCode}</strong>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+        {flat.name}
       </Typography>
+      <Typography color="text.secondary">Week {weekIndex + 1}</Typography>
+      <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
       {saveError ? <Alert severity="error">{saveError}</Alert> : null}
       <ThisWeek
         weekIndex={weekIndex}
         assignments={assignments}
         completions={done}
         currentMember={names.get(session.memberId) ?? ''}
+        colors={Object.fromEntries(members.map((member) => [member.name, member.color]))}
         today={toIsoDate(now)}
         onMarkDone={(entry) =>
           onSave({

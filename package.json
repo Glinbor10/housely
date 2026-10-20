@@ -27,7 +27,8 @@
     "dev:ci": "vite --mode ci",
     "test:coverage": "vitest run --coverage",
     "icons": "node scripts/generate-icons.mjs",
-    "e2e": "playwright test -c e2e"
+    "e2e": "playwright test -c e2e",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

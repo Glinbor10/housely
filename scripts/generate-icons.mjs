@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs'
 import sharp from 'sharp'
 
-// Regenerates every app icon from public/logo.svg. Replace the logo, run `npm run icons` and commit.
+// Regenerates every app icon from public/logo.svg and the link preview card from public/og-image.svg. Replace the logo, run `npm run icons` and commit.
 const LOGO = 'public/logo.svg'
 const OUTPUT = 'public/icons'
 const BRAND = '#1976d2'
@@ -23,6 +23,12 @@ await sharp({ create: { width: 512, height: 512, channels: 4, background: BRAND 
 
 // iOS rounds the corners itself and does not support transparency: flatten over the brand color.
 await render(180).flatten({ background: BRAND }).png().toFile(`${OUTPUT}/apple-touch-icon.png`)
+
+// Link preview card (WhatsApp, iMessage, Slack...): 1200x630 is the size every platform expects
+await sharp('public/og-image.svg', { density: 96 })
+  .resize(1200, 630)
+  .png()
+  .toFile('public/og-image.png')
 
 copyFileSync(LOGO, 'public/favicon.svg')
 console.log('Icons generated in', OUTPUT)

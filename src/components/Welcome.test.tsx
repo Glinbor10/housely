@@ -14,4 +14,10 @@ describe('Welcome', () => {
     expect(onCreate).toHaveBeenCalledTimes(1)
     expect(onJoin).toHaveBeenCalledTimes(1)
   })
+
+  it('shows the logo of the app', () => {
+    render(<Welcome onCreate={() => {}} onJoin={() => {}} />)
+    const logo = screen.getByRole('img', { name: /housely logo/i })
+    expect(logo.getAttribute('src')).toBe('/logo.svg')
+  })
 })
