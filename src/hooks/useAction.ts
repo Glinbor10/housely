@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { describeError } from '../i18n/describeError'
 
 interface ActionState {
   busy: boolean
@@ -17,7 +18,7 @@ export const useAction = () => {
     } catch (failure) {
       setState({
         busy: false,
-        error: failure instanceof Error ? failure.message : 'Something went wrong. Try again.',
+        error: describeError(failure),
       })
     }
   }

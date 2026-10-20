@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Alert, Button, Radio, Stack, TextField, Typography } from '@mui/material'
 import { normalizeDraft, validateDraft, type FlatDraft } from '../domain/flat'
 import { describeDraftError } from './draftMessages'
+import { useTranslation } from '../i18n/useTranslation'
 
 interface CreateFlatFormProps {
   initialStartDate: string
@@ -10,8 +11,6 @@ interface CreateFlatFormProps {
   onSubmit: (draft: FlatDraft, ownerName: string) => void
   onBack: () => void
 }
-
-const SUGGESTED_ZONES = ['Living room', 'Kitchen', 'Bathroom']
 
 const replaceAt = (items: string[], index: number, value: string): string[] =>
   items.map((item, position) => (position === index ? value : item))
@@ -26,9 +25,10 @@ export const CreateFlatForm = ({
   onSubmit,
   onBack,
 }: CreateFlatFormProps) => {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [members, setMembers] = useState(['', ''])
-  const [zones, setZones] = useState(SUGGESTED_ZONES)
+  const [zones, setZones] = useState(() => t('create.suggestedZones').split('|'))
   const [startDate, setStartDate] = useState(initialStartDate)
   // Index of the member row that is the person creating the flat
   const [ownerIndex, setOwnerIndex] = useState(0)
@@ -50,70 +50,74 @@ export const CreateFlatForm = ({
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">Create a flat</Typography>
+      <Typography variant="h5">{t('create.title')}</Typography>
 
-      <TextField label="Flat name" value={name} onChange={(event) => setName(event.target.value)} />
+      <TextField
+        label={t('create.flatName')}
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+      />
 
       <Stack spacing={1}>
-        <Typography variant="subtitle1">People (in rotation order)</Typography>
+        <Typography variant="subtitle1">{t('create.people')}</Typography>
         {members.map((member, index) => (
           <Stack key={index} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <Radio
               checked={ownerIndex === index}
               onChange={() => setOwnerIndex(index)}
-              slotProps={{ input: { 'aria-label': `Person ${index + 1} is me` } }}
+              slotProps={{ input: { 'aria-label': t('create.personIsMe', { n: index + 1 }) } }}
             />
             <TextField
               fullWidth
               size="small"
-              label={`Person ${index + 1}`}
+              label={t('create.person', { n: index + 1 })}
               value={member}
               onChange={(event) => setMembers(replaceAt(members, index, event.target.value))}
             />
             <Button
-              aria-label={`Remove person ${index + 1}`}
+              aria-label={t('create.removePerson', { n: index + 1 })}
               disabled={members.length === 1}
               onClick={() => {
                 setMembers(removeAt(members, index))
                 setOwnerIndex(ownerIndex >= index && ownerIndex > 0 ? ownerIndex - 1 : ownerIndex)
               }}
             >
-              Remove
+              {t('common.remove')}
             </Button>
           </Stack>
         ))}
-        <Button onClick={() => setMembers([...members, ''])}>Add person</Button>
+        <Button onClick={() => setMembers([...members, ''])}>{t('create.addPerson')}</Button>
         <Typography variant="caption" color="text.secondary">
-          Select the circle next to the person you are.
+          {t('create.selectMe')}
         </Typography>
       </Stack>
 
       <Stack spacing={1}>
-        <Typography variant="subtitle1">Zones to clean</Typography>
+        <Typography variant="subtitle1">{t('create.zones')}</Typography>
         {zones.map((zone, index) => (
           <Stack key={index} direction="row" spacing={1}>
             <TextField
               fullWidth
               size="small"
-              label={`Zone ${index + 1}`}
+              label={t('create.zone', { n: index + 1 })}
               value={zone}
               onChange={(event) => setZones(replaceAt(zones, index, event.target.value))}
             />
             <Button
-              aria-label={`Remove zone ${index + 1}`}
+              aria-label={t('create.removeZone', { n: index + 1 })}
               disabled={zones.length === 1}
               onClick={() => setZones(removeAt(zones, index))}
             >
-              Remove
+              {t('common.remove')}
             </Button>
           </Stack>
         ))}
-        <Button onClick={() => setZones([...zones, ''])}>Add zone</Button>
+        <Button onClick={() => setZones([...zones, ''])}>{t('create.addZone')}</Button>
       </Stack>
 
       <TextField
         type="date"
-        label="Start of the rotation"
+        label={t('create.start')}
         value={startDate}
         onChange={(event) => setStartDate(event.target.value)}
         slotProps={{ inputLabel: { shrink: true } }}
@@ -129,9 +133,9 @@ export const CreateFlatForm = ({
       {submitError ? <Alert severity="error">{submitError}</Alert> : null}
 
       <Stack direction="row" spacing={1}>
-        <Button onClick={onBack}>Back</Button>
+        <Button onClick={onBack}>{t('common.back')}</Button>
         <Button variant="contained" disabled={busy} onClick={submit}>
-          {busy ? 'Creating...' : 'Create flat'}
+          {busy ? t('create.creating') : t('create.submit')}
         </Button>
       </Stack>
     </Stack>

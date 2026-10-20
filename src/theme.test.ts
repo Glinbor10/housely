@@ -11,6 +11,15 @@ describe('theme', () => {
     expect(root.minHeight).toBe(MIN_TOUCH_TARGET)
   })
 
+  it('applies the touch target to toggle buttons, like the language switch', () => {
+    const root = theme.components?.MuiToggleButton?.styleOverrides?.root as {
+      minHeight?: number
+      minWidth?: number
+    }
+    expect(root.minHeight).toBe(MIN_TOUCH_TARGET)
+    expect(root.minWidth).toBe(MIN_TOUCH_TARGET)
+  })
+
   it('follows the dark mode of the device', () => {
     expect(themeOptions.colorSchemes?.dark).toBeTruthy()
     expect(themeOptions.colorSchemes?.light).toBeTruthy()

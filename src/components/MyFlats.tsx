@@ -1,4 +1,5 @@
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { useTranslation } from '../i18n/useTranslation'
 
 export interface FlatChoice {
   flatId: string
@@ -15,43 +16,43 @@ interface MyFlatsProps {
   onBack: () => void
 }
 
-export const MyFlats = ({ flats, busy, error, onOpen, onBack }: MyFlatsProps) => (
-  <Stack spacing={3}>
-    <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
-      Your flats
-    </Typography>
+export const MyFlats = ({ flats, busy, error, onOpen, onBack }: MyFlatsProps) => {
+  const { t } = useTranslation()
+  return (
+    <Stack spacing={3}>
+      <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
+        {t('myFlats.title')}
+      </Typography>
 
-    {flats === null && !error ? (
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-        <CircularProgress size={24} aria-label="Loading" />
-        <Typography>Looking for your flats...</Typography>
-      </Stack>
-    ) : null}
+      {flats === null && !error ? (
+        <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+          <CircularProgress size={24} aria-label={t('common.loading')} />
+          <Typography>{t('myFlats.looking')}</Typography>
+        </Stack>
+      ) : null}
 
-    {flats !== null && flats.length === 0 ? (
-      <Alert severity="info">
-        We did not find any flat for this Google account. If you were invited to one, go back and
-        join with the invite code.
-      </Alert>
-    ) : null}
+      {flats !== null && flats.length === 0 ? (
+        <Alert severity="info">{t('myFlats.none')}</Alert>
+      ) : null}
 
-    {flats !== null && flats.length > 0 ? (
-      <Stack spacing={1}>
-        {flats.map((flat) => (
-          <Button
-            key={flat.flatId}
-            variant="outlined"
-            size="large"
-            disabled={busy}
-            onClick={() => onOpen(flat)}
-          >
-            {flat.flatName}
-          </Button>
-        ))}
-      </Stack>
-    ) : null}
+      {flats !== null && flats.length > 0 ? (
+        <Stack spacing={1}>
+          {flats.map((flat) => (
+            <Button
+              key={flat.flatId}
+              variant="outlined"
+              size="large"
+              disabled={busy}
+              onClick={() => onOpen(flat)}
+            >
+              {flat.flatName}
+            </Button>
+          ))}
+        </Stack>
+      ) : null}
 
-    {error ? <Alert severity="error">{error}</Alert> : null}
-    <Button onClick={onBack}>Back</Button>
-  </Stack>
-)
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      <Button onClick={onBack}>{t('common.back')}</Button>
+    </Stack>
+  )
+}

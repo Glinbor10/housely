@@ -9,6 +9,9 @@ export const themeOptions: ThemeOptions = {
   palette: { primary: { main: '#1976d2' } },
   components: {
     MuiButton: { styleOverrides: { root: { minHeight: MIN_TOUCH_TARGET } } },
+    MuiToggleButton: {
+      styleOverrides: { root: { minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET } },
+    },
     MuiRadio: { styleOverrides: { root: { padding: 12 } } },
   },
 }
