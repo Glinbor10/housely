@@ -7,6 +7,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // True when the identity has Google linked. Anonymous identities (the default for flatmates)
+    // do not, which is what keeps creating flats for people who can recover their account.
+    function hasGoogle() {
+      return signedIn() && request.auth.token.firebase.identities.keys().hasAny(['google.com']);
+    }
+
     function flatPath(flatId) {
       return /databases/$(database)/documents/flats/$(flatId);
     }
@@ -69,7 +75,7 @@ service cloud.firestore {
       allow list: if false;
       // Creating a flat must bump the owner counter by exactly one in the same batch, which is how
       // the limit per identity is enforced (see /owners below).
-      allow create: if signedIn()
+      allow create: if hasGoogle()
         && request.resource.data.ownerUid == request.auth.uid
         && isValidFlat(request.resource.data)
         && getAfter(/databases/$(database)/documents/owners/$(request.auth.uid)).data.flatCount
@@ -158,14 +164,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // The flats of each person, so they can be found again from a new phone after signing in with
+    // Google. Written together with the membership, readable and deletable only by its owner.
+    match /userFlats/{uid}/flats/{flatId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['memberId', 'flatName'])
+        && request.resource.data.memberId is string
+        && isShortText(request.resource.data.flatName, 60)
+        && getAfter(/databases/$(database)/documents/flats/$(flatId)/users/$(uid)).data.memberId == request.resource.data.memberId;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
     // The invite code is the capability to find a flat. It can be read but never listed.
     match /inviteCodes/{code} {
       allow get: if signedIn();
       allow list: if false;
+      // flatName is a copy of the name of the flat: whoever joins sees which flat it is before being a
+      // member, and it is what the per-person index of flats stores.
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['flatId', 'ownerUid'])
+        && request.resource.data.keys().hasOnly(['flatId', 'ownerUid', 'flatName'])
+        && request.resource.data.keys().hasAll(['flatId', 'ownerUid', 'flatName'])
         && request.resource.data.ownerUid == request.auth.uid
+        && isShortText(request.resource.data.flatName, 60)
         && getAfter(flatPath(request.resource.data.flatId)).data.ownerUid == request.auth.uid
+        && getAfter(flatPath(request.resource.data.flatId)).data.name == request.resource.data.flatName
         && getAfter(flatPath(request.resource.data.flatId)).data.inviteCode == code;
       allow update, delete: if false;
     }

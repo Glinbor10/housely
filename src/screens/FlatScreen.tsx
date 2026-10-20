@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { InviteCode } from '../components/InviteCode'
 import { MembersList } from '../components/MembersList'
+import { SaveAccessBanner } from '../components/SaveAccessBanner'
 import { ThisWeek } from '../components/ThisWeek'
 import { TricountLink } from '../components/TricountLink'
 import { toIsoDate, type Completion } from '../domain/completions'
 import { getAssignments, getRestingMembers, getWeekIndex } from '../domain/rotation'
 import { getFirebase } from '../firebase/app'
 import {
+  forgetFlat,
   releaseMember,
   saveCompletion,
   setTricountUrl,
@@ -18,17 +20,21 @@ import {
   type FlatRecord,
   type MemberRecord,
 } from '../firebase/flatRepository'
+import { openGoogle } from '../firebase/googleSignIn'
 import { useAction } from '../hooks/useAction'
 import { useSubscription } from '../hooks/useSubscription'
-import type { Session } from '../storage/session'
+import { dismissSaveAccess, isSaveAccessDismissed } from '../storage/preferences'
+import { getBrowserStorage, type Session } from '../storage/session'
 
 interface FlatScreenProps {
   uid: string
+  // True when the identity has Google linked; flatmates who joined anonymously are invited to link it
+  isGoogle: boolean
   session: Session
   onLeave: () => void
 }
 
-export const FlatScreen = ({ uid, session, onLeave }: FlatScreenProps) => {
+export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps) => {
   const { db } = getFirebase()
   const { flatId } = session
   const flat = useSubscription<FlatRecord | null>(
@@ -51,10 +57,27 @@ export const FlatScreen = ({ uid, session, onLeave }: FlatScreenProps) => {
   const save = useAction()
   const tricount = useAction()
   const release = useAction()
+  const linking = useAction()
+  const [bannerDismissed, setBannerDismissed] = useState(() =>
+    isSaveAccessDismissed(getBrowserStorage()),
+  )
 
   const failure = flat.error ?? members.error ?? completions.error
   const leave = (
     <Button variant="outlined" onClick={onLeave}>
+      Leave this flat on this device
+    </Button>
+  )
+  // Access was lost (for example, the owner released this identity): the entry that points to the
+  // flat is stale, so it is forgotten together with the local session.
+  const leaveLostFlat = (
+    <Button
+      variant="outlined"
+      onClick={() => {
+        forgetFlat(db, uid, flatId).catch(() => undefined)
+        onLeave()
+      }}
+    >
       Leave this flat on this device
     </Button>
   )
@@ -65,35 +88,53 @@ export const FlatScreen = ({ uid, session, onLeave }: FlatScreenProps) => {
         This flat is not available. You may have lost access to it.
         {failure ? ` (${failure.message})` : ''}
       </Alert>
-      {leave}
+      {leaveLostFlat}
     </Stack>
   ) : !flat.ready || !members.ready || !completions.ready || flat.value === null ? (
     <Stack sx={{ alignItems: 'center', py: 6 }}>
       <CircularProgress aria-label="Loading" />
     </Stack>
   ) : (
-    <FlatContent
-      flat={flat.value}
-      members={members.value}
-      completions={completions.value}
-      session={session}
-      isOwner={flat.value.ownerUid === uid}
-      now={now}
-      saveError={save.error}
-      tricountBusy={tricount.busy}
-      tricountError={tricount.error}
-      releaseBusy={release.busy}
-      releaseError={release.error}
-      onSaveTricount={(url) => tricount.run(() => setTricountUrl(db, flatId, url))}
-      onSave={(record) => save.run(() => saveCompletion(db, flatId, record))}
-      onRelease={(memberId) => {
-        const member = members.value.find((candidate) => candidate.id === memberId)
-        return member?.uid
-          ? release.run(() => releaseMember(db, { flatId, memberId, uid: member.uid as string }))
-          : undefined
-      }}
-      leave={leave}
-    />
+    <Stack spacing={2}>
+      {!isGoogle && !bannerDismissed ? (
+        <SaveAccessBanner
+          busy={linking.busy}
+          error={linking.error}
+          onSave={() =>
+            linking.run(async () => {
+              // Only link: switching to another account would lose access to this flat
+              await openGoogle(getFirebase().auth, undefined, { allowSwitch: false })
+            })
+          }
+          onDismiss={() => {
+            dismissSaveAccess(getBrowserStorage())
+            setBannerDismissed(true)
+          }}
+        />
+      ) : null}
+      <FlatContent
+        flat={flat.value}
+        members={members.value}
+        completions={completions.value}
+        session={session}
+        isOwner={flat.value.ownerUid === uid}
+        now={now}
+        saveError={save.error}
+        tricountBusy={tricount.busy}
+        tricountError={tricount.error}
+        releaseBusy={release.busy}
+        releaseError={release.error}
+        onSaveTricount={(url) => tricount.run(() => setTricountUrl(db, flatId, url))}
+        onSave={(record) => save.run(() => saveCompletion(db, flatId, record))}
+        onRelease={(memberId) => {
+          const member = members.value.find((candidate) => candidate.id === memberId)
+          return member?.uid
+            ? release.run(() => releaseMember(db, { flatId, memberId, uid: member.uid as string }))
+            : undefined
+        }}
+        leave={leave}
+      />
+    </Stack>
   )
 }
 

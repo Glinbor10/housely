@@ -68,7 +68,7 @@ jobs:
         if: ${{ env.HAS_FIREBASE == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: npx playwright install --with-deps chromium webkit
 
-      # Real Chromium (Android) and WebKit (iPhone) against the deployed preview: build, CSP, service worker, Firebase
+      # Read-only checks on the deployed preview with real Chromium and WebKit: headers, service worker, offline shell
       - name: End-to-end tests on the preview
         if: ${{ env.HAS_FIREBASE == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: npm run e2e
@@ -112,3 +112,52 @@ jobs:
 
       - run: npm ci
       - run: npm run test:rules
+
+  emulator-e2e:
+    name: Browser tests on the emulators
+    runs-on: ubuntu-latest
+    # Informational for now: the emulated Google popup is timing-sensitive in real browsers, so a red run
+    # is a signal to look at, not a reason to block a merge. Not a required check.
+    continue-on-error: true
+    if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Cache Firebase emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-15.34.0
+
+      - run: npm ci
+
+      - name: Install the browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      # Full flows (create with the simulated Google popup, join, release, offline, find your flat) on
+      # Android (Chromium) and iPhone (WebKit) against the Auth and Firestore emulators
+      - name: End-to-end tests on the emulators
+        run: npm run e2e:emulator
+
+      - name: Upload the end-to-end report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-emulator-report
+          path: |
+            e2e/playwright-report
+            playwright-report
+            test-results
+          retention-days: 7

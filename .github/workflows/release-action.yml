@@ -108,7 +108,7 @@ jobs:
       # Only the tests that never write data: production must not be filled with test flats
       - name: Smoke test production
         if: ${{ env.HAS_FIREBASE == 'true' }}
-        run: npx playwright test -c e2e mobile.spec.ts
+        run: npx playwright test -c e2e/deployed.config.ts mobile.spec.ts
         env:
           E2E_BASE_URL: https://${{ vars.FIREBASE_PROJECT_PROD }}.web.app
 

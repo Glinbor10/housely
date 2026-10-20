@@ -17,3 +17,21 @@ export const dismissInstallHint = (storage: SessionStorage): void => {
     // Without storage the hint simply shows again next time.
   }
 }
+
+const SAVE_ACCESS_KEY = 'housely:save-access-dismissed'
+
+export const isSaveAccessDismissed = (storage: SessionStorage): boolean => {
+  try {
+    return storage.getItem(SAVE_ACCESS_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export const dismissSaveAccess = (storage: SessionStorage): void => {
+  try {
+    storage.setItem(SAVE_ACCESS_KEY, 'true')
+  } catch {
+    // Without storage the banner simply shows again next time.
+  }
+}

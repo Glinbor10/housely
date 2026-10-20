@@ -1,33 +1,45 @@
 import { useState } from 'react'
 import { CreateFlatForm } from '../components/CreateFlatForm'
+import { GoogleGate } from '../components/GoogleGate'
 import { JoinFlat } from '../components/JoinFlat'
+import { MyFlats, type FlatChoice } from '../components/MyFlats'
 import { Welcome } from '../components/Welcome'
 import { generateInviteCode, getMondayIso, type FlatDraft } from '../domain/flat'
 import { getFirebase } from '../firebase/app'
 import {
   createFlat,
-  findFlatIdByCode,
+  findFlatByCode,
   joinFlat,
   listMembers,
+  listMyFlats,
   type MemberRecord,
 } from '../firebase/flatRepository'
+import { GoogleAccessError, isGoogleUser, type AuthUserInfo } from '../firebase/googleAccess'
+import { openGoogle } from '../firebase/googleSignIn'
 import { getBrowserStorage, saveSession, type Session } from '../storage/session'
 
 interface OnboardingScreenProps {
-  uid: string
+  user: AuthUserInfo
   onDone: (session: Session) => void
 }
 
-type View = 'welcome' | 'create' | 'join'
+type View = 'welcome' | 'google-create' | 'create' | 'join' | 'my-flats'
 
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : 'Something went wrong. Try again.'
 
-export const OnboardingScreen = ({ uid, onDone }: OnboardingScreenProps) => {
+interface FoundFlat {
+  flatId: string
+  flatName: string
+  candidates: MemberRecord[]
+}
+
+export const OnboardingScreen = ({ user, onDone }: OnboardingScreenProps) => {
   const [view, setView] = useState<View>('welcome')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [found, setFound] = useState<{ flatId: string; candidates: MemberRecord[] } | null>(null)
+  const [found, setFound] = useState<FoundFlat | null>(null)
+  const [myFlats, setMyFlats] = useState<FlatChoice[] | null>(null)
   // Captured once: the default start of the rotation is the Monday of the week the flat is created
   const [defaultStart] = useState(() => getMondayIso(new Date()))
 
@@ -35,6 +47,7 @@ export const OnboardingScreen = ({ uid, onDone }: OnboardingScreenProps) => {
     setView(next)
     setError(null)
     setFound(null)
+    setMyFlats(null)
   }
 
   const finish = (session: Session) => {
@@ -48,17 +61,39 @@ export const OnboardingScreen = ({ uid, onDone }: OnboardingScreenProps) => {
     try {
       await action()
     } catch (failure) {
-      setError(messageOf(failure))
+      // Closing the Google window is a choice, not a problem
+      if (!(failure instanceof GoogleAccessError && failure.code === 'cancelled')) {
+        setError(messageOf(failure))
+      }
     } finally {
       setBusy(false)
     }
+  }
+
+  const startCreating = () => go(isGoogleUser(user) ? 'create' : 'google-create')
+
+  const continueWithGoogleToCreate = () =>
+    run(async () => {
+      await openGoogle(getFirebase().auth)
+      setView('create')
+    })
+
+  // Opens Google right away: the click is the gesture the browser needs to allow the window
+  const signInToFindFlats = () => {
+    setView('my-flats')
+    setError(null)
+    setMyFlats(null)
+    return run(async () => {
+      const outcome = await openGoogle(getFirebase().auth)
+      setMyFlats(await listMyFlats(getFirebase().db, outcome.uid))
+    })
   }
 
   const create = (draft: FlatDraft, ownerName: string) =>
     run(async () => {
       const created = await createFlat(getFirebase().db, {
         draft,
-        ownerUid: uid,
+        ownerUid: user.uid,
         ownerName,
         generateCode: () => generateInviteCode(Math.random),
       })
@@ -68,14 +103,14 @@ export const OnboardingScreen = ({ uid, onDone }: OnboardingScreenProps) => {
   const find = (code: string) =>
     run(async () => {
       const { db } = getFirebase()
-      const flatId = await findFlatIdByCode(db, code)
-      if (flatId === null) {
+      const flat = await findFlatByCode(db, code)
+      if (flat === null) {
         setError('That invite code does not exist. Check it and try again.')
         return
       }
-      const members = await listMembers(db, flatId)
+      const members = await listMembers(db, flat.flatId)
       setFound({
-        flatId,
+        ...flat,
         candidates: members.filter((member) => member.uid === null && member.active),
       })
     })
@@ -83,11 +118,23 @@ export const OnboardingScreen = ({ uid, onDone }: OnboardingScreenProps) => {
   const pick = (memberId: string) =>
     run(async () => {
       if (found === null) return
-      await joinFlat(getFirebase().db, { flatId: found.flatId, memberId, uid })
+      await joinFlat(getFirebase().db, {
+        flatId: found.flatId,
+        memberId,
+        uid: user.uid,
+        flatName: found.flatName,
+      })
       finish({ flatId: found.flatId, memberId })
     })
 
-  return view === 'create' ? (
+  return view === 'google-create' ? (
+    <GoogleGate
+      busy={busy}
+      error={error}
+      onContinue={continueWithGoogleToCreate}
+      onBack={() => go('welcome')}
+    />
+  ) : view === 'create' ? (
     <CreateFlatForm
       initialStartDate={defaultStart}
       busy={busy}
@@ -98,13 +145,22 @@ export const OnboardingScreen = ({ uid, onDone }: OnboardingScreenProps) => {
   ) : view === 'join' ? (
     <JoinFlat
       candidates={found === null ? null : found.candidates}
+      flatName={found?.flatName}
       busy={busy}
       error={error}
       onFind={find}
       onPick={pick}
       onBack={() => go('welcome')}
     />
+  ) : view === 'my-flats' ? (
+    <MyFlats
+      flats={myFlats}
+      busy={busy}
+      error={error}
+      onOpen={(flat) => finish({ flatId: flat.flatId, memberId: flat.memberId })}
+      onBack={() => go('welcome')}
+    />
   ) : (
-    <Welcome onCreate={() => go('create')} onJoin={() => go('join')} />
+    <Welcome onCreate={startCreating} onJoin={() => go('join')} onSignIn={signInToFindFlats} />
   )
 }

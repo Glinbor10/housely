@@ -9,6 +9,8 @@ interface Candidate {
 interface JoinFlatProps {
   // Null until the invite code has been resolved; then the names nobody has claimed yet
   candidates: Candidate[] | null
+  // The name of the flat the invite code belongs to, once it is known
+  flatName?: string
   busy: boolean
   error: string | null
   onFind: (code: string) => void
@@ -16,7 +18,15 @@ interface JoinFlatProps {
   onBack: () => void
 }
 
-export const JoinFlat = ({ candidates, busy, error, onFind, onPick, onBack }: JoinFlatProps) => {
+export const JoinFlat = ({
+  candidates,
+  flatName,
+  busy,
+  error,
+  onFind,
+  onPick,
+  onBack,
+}: JoinFlatProps) => {
   const [code, setCode] = useState('')
 
   return (
@@ -47,6 +57,7 @@ export const JoinFlat = ({ candidates, busy, error, onFind, onPick, onBack }: Jo
         </>
       ) : (
         <>
+          {flatName ? <Typography variant="h6">Joining {flatName}</Typography> : null}
           <Typography>Who are you?</Typography>
           {candidates.length === 0 ? (
             <Alert severity="warning">

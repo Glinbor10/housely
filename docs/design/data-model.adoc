@@ -15,7 +15,9 @@ flats/{flatId}/users/{uid}
 flats/{flatId}/completions/{weekIndex}_{zone}
   weekIndex, zone, memberId, doneAt (YYYY-MM-DD)
 inviteCodes/{code}
-  flatId
+  flatId, ownerUid, flatName (so a joiner sees the flat name before joining)
+userFlats/{uid}/flats/{flatId}
+  memberId, flatName (the flats of an identity: how a Google account finds its flats from a new phone)
 owners/{uid}
   flatCount (flats created by this identity, at most 3)
 ----
@@ -32,11 +34,12 @@ owners/{uid}
 Implemented in `firebase/firestore/firestore.rules` and verified with tests on the emulator (`npm run test:rules`).
 
 . A user is a *member* of a flat if `flats/{flatId}/users/{uid}` exists. Only members read the flat and its completions.
-. Create a flat: any authenticated user, who becomes the owner (`ownerUid`, immutable). A flat can never be deleted, nor its members (they are deactivated with `active`).
+. Create a flat: only a user whose identity is linked to Google (`request.auth.token.firebase.identities` contains `google.com`), who becomes the owner (`ownerUid`, immutable). A flat can never be deleted, nor its members (they are deactivated with `active`).
 . Join: the user claims an unclaimed member (`uid == null`) and creates their membership in the same batch. An already claimed member cannot be claimed.
 . Only the owner edits the flat and adds or modifies members.
 . Completions: a member only records, corrects or deletes their own, for an existing zone, with a valid date and a `week_zone` identifier.
-. Invite codes: they can be read, not listed.
+. Invite codes: they can be read, not listed. Creating one requires the `flatName` to match the flat.
+. `userFlats/{uid}`: each identity reads and writes only its own list. Flatmates join anonymously and may link Google later (the uid is kept), so the same list works for them.
 . Abuse limits: at most 3 flats per identity, at most 20 people per flat and completion weeks up to 1040 (about 20 years).
 
 === Limits and their reach

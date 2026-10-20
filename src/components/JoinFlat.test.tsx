@@ -92,4 +92,19 @@ describe('JoinFlat', () => {
     await userEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(onBack).toHaveBeenCalledTimes(1)
   })
+
+  it('says which flat is being joined', () => {
+    render(
+      <JoinFlat
+        candidates={candidates}
+        flatName="Calle Luna 12"
+        busy={false}
+        error={null}
+        onFind={noop}
+        onPick={noop}
+        onBack={noop}
+      />,
+    )
+    expect(screen.getByText(/calle luna 12/i)).toBeTruthy()
+  })
 })

@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { Container, Stack } from '@mui/material'
 import { InstallHint } from './components/InstallHint'
+import { getFirebase } from './firebase/app'
+import { isGoogleUser, type AuthUserInfo } from './firebase/googleAccess'
+import { subscribeAuthUser } from './firebase/googleSignIn'
+import { useAuthUser } from './hooks/useAuthUser'
 import { shouldSuggestInstall } from './pwa/installHint'
 import { AuthGate } from './screens/AuthGate'
 import { readInstallContext } from './screens/installContext'
@@ -9,7 +13,15 @@ import { OnboardingScreen } from './screens/OnboardingScreen'
 import { dismissInstallHint, isInstallHintDismissed } from './storage/preferences'
 import { clearSession, getBrowserStorage, loadSession, type Session } from './storage/session'
 
+// A stable function: it identifies the subscription of the live account
+const subscribeToAccount = (onChange: (user: AuthUserInfo | null) => void) =>
+  subscribeAuthUser(getFirebase().auth, onChange)
+
 const Home = ({ uid }: { uid: string }) => {
+  // The account is live: it changes when an anonymous identity is linked to Google or switched to an
+  // existing Google account. Until the first update, the identity that signed in is used.
+  const user = useAuthUser(subscribeToAccount) ?? { uid, isAnonymous: true, providerIds: [] }
+
   // The flat of this device is remembered, so the app opens on it next time
   const [session, setSession] = useState<Session | null>(() => loadSession(getBrowserStorage()))
 
@@ -20,7 +32,8 @@ const Home = ({ uid }: { uid: string }) => {
 
   const content = session ? (
     <FlatScreen
-      uid={uid}
+      uid={user.uid}
+      isGoogle={isGoogleUser(user)}
       session={session}
       onLeave={() => {
         clearSession(getBrowserStorage())
@@ -28,7 +41,7 @@ const Home = ({ uid }: { uid: string }) => {
       }}
     />
   ) : (
-    <OnboardingScreen uid={uid} onDone={setSession} />
+    <OnboardingScreen user={user} onDone={setSession} />
   )
 
   return (

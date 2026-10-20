@@ -3,8 +3,37 @@ import 'fake-indexeddb/auto'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { deleteApp } from 'firebase/app'
+import { signOut } from 'firebase/auth'
 import { terminate } from 'firebase/firestore'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+
+// The Google popup is replaced by a fake credential, which the Auth emulator accepts. Everything after
+// the popup (linking, switching to an existing account, the rules) is the real code.
+vi.mock('./firebase/googleSignIn', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./firebase/googleSignIn')>()
+  const { GoogleAuthProvider, linkWithCredential, signInWithCredential } =
+    await import('firebase/auth')
+  const credential = () =>
+    GoogleAuthProvider.credential(
+      JSON.stringify({ sub: 'integration-google', email: 'ana@example.com', email_verified: true }),
+    )
+  const ops = {
+    linkWithPopup: async (user: Parameters<typeof linkWithCredential>[0]) =>
+      (await linkWithCredential(user, credential())).user,
+    signInWithPopup: async (auth: Parameters<typeof signInWithCredential>[0]) =>
+      (await signInWithCredential(auth, credential())).user,
+    credentialFromError: () => credential(),
+    signInWithCredential: async (
+      auth: Parameters<typeof signInWithCredential>[0],
+      value: Parameters<typeof signInWithCredential>[1],
+    ) => (await signInWithCredential(auth, value)).user,
+  }
+  return {
+    ...actual,
+    openGoogle: (auth: Parameters<typeof actual.openGoogle>[0], _ops?: unknown, options?: object) =>
+      actual.openGoogle(auth, ops, options),
+  }
+})
 
 // Whole app against the Auth and Firestore emulators with the production rules: `npm run test:rules`.
 beforeAll(() => {
@@ -28,18 +57,29 @@ afterAll(async () => {
   await deleteApp(app)
 })
 
+// React 19 only resumes a Suspense boundary that waits on `use` when render runs inside an async act
+const renderApp = async () => {
+  const { default: App } = await import('./App')
+  await act(async () => {
+    render(<App />)
+  })
+}
+
 describe('App', () => {
-  it('creates a flat, shows this week and lets the creator mark a zone as done', async () => {
-    const { default: App } = await import('./App')
-    // React 19 only resumes a Suspense boundary that waits on `use` when render runs inside an async act
-    await act(async () => {
-      render(<App />)
-    })
+  it('creates a flat after signing in with Google, shows this week and the Tricount link', async () => {
+    await renderApp()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /create a flat/i }, { timeout: 15000 }),
     )
-    await userEvent.type(screen.getByLabelText('Flat name'), 'Integration flat')
+    // Creating a flat needs Google: the gate explains why and opens it
+    expect(screen.getByText(/create your flat with google/i)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }))
+
+    await userEvent.type(
+      await screen.findByLabelText('Flat name', {}, { timeout: 15000 }),
+      'Integration flat',
+    )
     await userEvent.type(screen.getByLabelText('Person 1'), 'Ana')
     await userEvent.type(screen.getByLabelText('Person 2'), 'Ben')
     await userEvent.click(screen.getByRole('button', { name: /create flat/i }))
@@ -48,6 +88,8 @@ describe('App', () => {
     expect(screen.getByText(/invite code/i)).toBeTruthy()
     // With 3 zones and 2 people the creator has two zones this week
     expect(screen.getAllByText('Ana (you)').length).toBeGreaterThan(0)
+    // The owner signed in with Google, so there is nothing to save
+    expect(screen.queryByText(/save your access/i)).toBeNull()
 
     const mark = screen.getAllByRole('button', { name: /mark as done/i })
     await userEvent.click(mark[0])
@@ -55,21 +97,38 @@ describe('App', () => {
       timeout: 15000,
     })
 
-    // The creator owns the flat, so they can add the Tricount link and it becomes an openable link
     await userEvent.click(screen.getByRole('button', { name: /add tricount link/i }))
     await userEvent.type(screen.getByLabelText('Tricount link'), 'https://tricount.com/tINTEG')
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
     const link = await screen.findByRole('link', { name: /open tricount/i }, { timeout: 15000 })
     expect(link.getAttribute('href')).toBe('https://tricount.com/tINTEG')
-  }, 60000)
+  }, 90000)
 
   it('opens the same flat again on the next visit', async () => {
     vi.resetModules()
-    const { default: App } = await import('./App')
-    // React 19 only resumes a Suspense boundary that waits on `use` when render runs inside an async act
-    await act(async () => {
-      render(<App />)
-    })
+    await renderApp()
     expect(await screen.findByText('Integration flat', {}, { timeout: 15000 })).toBeTruthy()
   }, 60000)
+
+  it('finds the flat again from a new phone by signing in with Google', async () => {
+    // A new phone: nothing remembered locally and a fresh anonymous identity
+    const { getFirebase } = await import('./firebase/app')
+    await signOut(getFirebase().auth)
+    window.localStorage.clear()
+    cleanup()
+    vi.resetModules()
+    await renderApp()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /i already have a flat/i }, { timeout: 15000 }),
+    )
+    const flat = await screen.findByRole(
+      'button',
+      { name: /integration flat/i },
+      { timeout: 15000 },
+    )
+    await userEvent.click(flat)
+    expect(await screen.findByText(/invite code/i, {}, { timeout: 15000 })).toBeTruthy()
+    expect(screen.getAllByText('Ana (you)').length).toBeGreaterThan(0)
+  }, 90000)
 })
