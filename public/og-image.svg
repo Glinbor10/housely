@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Housely: fair weekly chores for your flat">
+  <!-- Source of the link preview card. Edit it and run `npm run icons` to regenerate og-image.png. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1976d2" />
+      <stop offset="1" stop-color="#0b3d91" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="1040" cy="90" r="260" fill="#ffffff" opacity="0.06" />
+  <circle cx="1130" cy="560" r="200" fill="#ffffff" opacity="0.05" />
+
+  <g transform="translate(90 135) scale(0.72)">
+    <rect width="512" height="512" rx="112" fill="#ffffff" />
+    <path d="M96 248 L256 112 L416 248 V400 a24 24 0 0 1 -24 24 H120 a24 24 0 0 1 -24 -24 Z" fill="#1976d2" />
+    <circle cx="204" cy="290" r="18" fill="#ffffff" />
+    <circle cx="308" cy="290" r="18" fill="#ffffff" />
+    <path d="M196 350 Q256 400 316 350" fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" />
+  </g>
+
+  <text x="510" y="250" font-family="Arial, Helvetica, sans-serif" font-size="108" font-weight="700" fill="#ffffff">Housely</text>
+  <text x="514" y="325" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="#e3f2fd">Fair weekly chores for your flat.</text>
+  <text x="514" y="385" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="#e3f2fd">Everybody cleans everything, in turn.</text>
+
+  <g font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" fill="#0b3d91">
+    <rect x="514" y="450" width="210" height="62" rx="31" fill="#ffffff" />
+    <text x="619" y="491" text-anchor="middle">Installable</text>
+    <rect x="744" y="450" width="190" height="62" rx="31" fill="#ffffff" />
+    <text x="839" y="491" text-anchor="middle">Offline</text>
+    <rect x="954" y="450" width="150" height="62" rx="31" fill="#ffffff" />
+    <text x="1029" y="491" text-anchor="middle">Free</text>
+  </g>
+</svg>
