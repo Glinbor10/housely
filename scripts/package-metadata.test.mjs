@@ -1,0 +1,33 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+const readme = readFileSync('README.md', 'utf8')
+
+describe('package metadata', () => {
+  it('declares the license that the LICENSE file contains', () => {
+    expect(pkg.license).toBe('SEE LICENSE IN LICENSE')
+    expect(existsSync('LICENSE')).toBe(true)
+    expect(readFileSync('LICENSE', 'utf8')).toContain('PolyForm Noncommercial License 1.0.0')
+  })
+
+  it('describes the project and points to its repository', () => {
+    expect(pkg.description.length).toBeGreaterThan(20)
+    expect(pkg.repository.url).toContain('github.com/Glinbor10/housely')
+  })
+
+  it('stays private so it is never published to npm by accident', () => {
+    expect(pkg.private).toBe(true)
+  })
+})
+
+describe('README', () => {
+  it.each([
+    ['LICENSE', /\(LICENSE\)/],
+    ['the user manual', /user-manual\.adoc/],
+    ['the contribution guide', /CONTRIBUTING\.md/],
+    ['the prerequisites to run it', /Java/],
+  ])('links or mentions %s', (_name, pattern) => {
+    expect(readme).toMatch(pattern)
+  })
+})

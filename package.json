@@ -2,6 +2,17 @@
   "name": "housely",
   "private": true,
   "version": "0.0.0",
+  "description": "Organize a shared flat: a fair weekly chore rotation, completion tracking and a Tricount link, as an installable offline PWA.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Glinbor10",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Glinbor10/housely.git"
+  },
+  "homepage": "https://github.com/Glinbor10/housely#readme",
+  "bugs": {
+    "url": "https://github.com/Glinbor10/housely/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "npx -y firebase-tools@15.34.0 --config firebase/firebase.json emulators:exec --only auth,firestore --ui --project demo-housely \"vite --mode emulators\"",
