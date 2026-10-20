@@ -12,7 +12,12 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
-import { normalizeDraft, validateDraft, type FlatDraft } from '../domain/flat'
+import {
+  MAX_FLATS_PER_IDENTITY,
+  normalizeDraft,
+  validateDraft,
+  type FlatDraft,
+} from '../domain/flat'
 
 export interface FlatRecord {
   id: string
@@ -84,13 +89,29 @@ const pickFreeCode = async (db: Firestore, generateCode: () => string): Promise<
   throw new Error('Could not find a free invite code')
 }
 
-// Flat, members, owner membership and invite code are written atomically in one batch.
+export class FlatLimitError extends Error {
+  constructor() {
+    super(
+      `You can create up to ${MAX_FLATS_PER_IDENTITY} flats from this device. Join an existing flat with its invite code instead.`,
+    )
+    this.name = 'FlatLimitError'
+  }
+}
+
+// Flat, members, owner membership, invite code and the owner counter are written atomically in one batch.
 export const createFlat = async (db: Firestore, input: CreateFlatInput): Promise<CreatedFlat> => {
   const draft = normalizeDraft(input.draft)
   const errors = validateDraft(draft)
   if (errors.length > 0) throw new Error(`Invalid flat: ${errors.join(', ')}`)
   const ownerIndex = draft.members.indexOf(input.ownerName)
   if (ownerIndex === -1) throw new Error('The owner must be one of the members')
+
+  // The rules cap the flats created per identity; checking here gives a clear message instead of a
+  // generic permission error, and nothing is written when the limit is reached.
+  const ownerCounter = doc(db, 'owners', input.ownerUid)
+  const counterSnapshot = await getDoc(ownerCounter)
+  const createdBefore = counterSnapshot.exists() ? (counterSnapshot.data().flatCount as number) : 0
+  if (createdBefore >= MAX_FLATS_PER_IDENTITY) throw new FlatLimitError()
 
   const inviteCode = await pickFreeCode(db, input.generateCode)
   const flat = doc(collection(db, 'flats'))
@@ -106,7 +127,8 @@ export const createFlat = async (db: Firestore, input: CreateFlatInput): Promise
 
   let ownerMemberId = ''
   draft.members.forEach((name, index) => {
-    const member = doc(collection(flat, 'members'))
+    // Ids m0 to m19 follow the order: the rules use them to cap a flat at 20 people
+    const member = doc(flat, 'members', `m${index}`)
     const isOwner = index === ownerIndex
     if (isOwner) ownerMemberId = member.id
     batch.set(member, {
@@ -120,6 +142,7 @@ export const createFlat = async (db: Firestore, input: CreateFlatInput): Promise
 
   batch.set(doc(flat, 'users', input.ownerUid), { memberId: ownerMemberId })
   batch.set(doc(db, 'inviteCodes', inviteCode), { flatId: flat.id, ownerUid: input.ownerUid })
+  batch.set(ownerCounter, { flatCount: createdBefore + 1 })
   await batch.commit()
   return { flatId: flat.id, memberId: ownerMemberId, inviteCode }
 }

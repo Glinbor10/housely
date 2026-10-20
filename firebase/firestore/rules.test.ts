@@ -78,15 +78,16 @@ describe('flats', () => {
     const firestore = db(OWNER)
     const batch = writeBatch(firestore)
     batch.set(doc(firestore, `flats/${FLAT}`), flatData)
-    batch.set(doc(firestore, `flats/${FLAT}/members/m-owner`), {
+    batch.set(doc(firestore, `flats/${FLAT}/members/m0`), {
       name: 'Ana',
       color: '#1976d2',
       uid: OWNER,
       active: true,
       order: 0,
     })
-    batch.set(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm-owner' })
+    batch.set(doc(firestore, `flats/${FLAT}/users/${OWNER}`), { memberId: 'm0' })
     batch.set(doc(firestore, 'inviteCodes/ABC123'), { flatId: FLAT, ownerUid: OWNER })
+    batch.set(doc(firestore, `owners/${OWNER}`), { flatCount: 1 })
     await assertSucceeds(batch.commit())
   })
 
@@ -127,6 +128,94 @@ describe('flats', () => {
   it('never allows deleting a flat', async () => {
     await seedFlat()
     await assertFails(deleteDoc(doc(db(OWNER), `flats/${FLAT}`)))
+  })
+})
+
+describe('abuse limits', () => {
+  const ownerMember = (uid: string) => ({
+    name: 'Ana',
+    color: '#1976d2',
+    uid,
+    active: true,
+    order: 0,
+  })
+
+  // Creates a whole flat in one batch; `counter` is what gets written to the owner counter document
+  const createFlatBatch = (
+    uid: string,
+    flatId: string,
+    code: string,
+    counter: number,
+    isUpdate: boolean,
+  ) => {
+    const firestore = db(uid)
+    const batch = writeBatch(firestore)
+    batch.set(doc(firestore, `flats/${flatId}`), { ...flatData, ownerUid: uid, inviteCode: code })
+    batch.set(doc(firestore, `flats/${flatId}/members/m0`), ownerMember(uid))
+    batch.set(doc(firestore, `flats/${flatId}/users/${uid}`), { memberId: 'm0' })
+    batch.set(doc(firestore, `inviteCodes/${code}`), { flatId, ownerUid: uid })
+    if (isUpdate) {
+      batch.update(doc(firestore, `owners/${uid}`), { flatCount: counter })
+    } else {
+      batch.set(doc(firestore, `owners/${uid}`), { flatCount: counter })
+    }
+    return batch.commit()
+  }
+
+  it('lets an identity create up to 3 flats and no more', async () => {
+    await assertSucceeds(createFlatBatch(OWNER, 'f1', 'AAAAA1', 1, false))
+    await assertSucceeds(createFlatBatch(OWNER, 'f2', 'AAAAA2', 2, true))
+    await assertSucceeds(createFlatBatch(OWNER, 'f3', 'AAAAA3', 3, true))
+    await assertFails(createFlatBatch(OWNER, 'f4', 'AAAAA4', 4, true))
+  })
+
+  it('rejects a flat that does not move the counter by exactly one', async () => {
+    await assertFails(createFlatBatch(OWNER, 'f1', 'BBBBB1', 0, false))
+    await assertFails(createFlatBatch(OWNER, 'f1', 'BBBBB2', 2, false))
+  })
+
+  it('rejects creating a flat without touching the counter', async () => {
+    const firestore = db(OWNER)
+    const batch = writeBatch(firestore)
+    batch.set(doc(firestore, 'flats/f1'), flatData)
+    batch.set(doc(firestore, 'flats/f1/members/m0'), ownerMember(OWNER))
+    batch.set(doc(firestore, `flats/f1/users/${OWNER}`), { memberId: 'm0' })
+    await assertFails(batch.commit())
+  })
+
+  it('keeps the counter private and never lets it go down', async () => {
+    await assertSucceeds(createFlatBatch(OWNER, 'f1', 'CCCCC1', 1, false))
+    await assertSucceeds(getDoc(doc(db(OWNER), `owners/${OWNER}`)))
+    await assertFails(getDoc(doc(db(STRANGER), `owners/${OWNER}`)))
+    await assertFails(updateDoc(doc(db(OWNER), `owners/${OWNER}`), { flatCount: 0 }))
+    await assertFails(deleteDoc(doc(db(OWNER), `owners/${OWNER}`)))
+  })
+
+  it('allows at most 20 people per flat: ids are m0 to m19 and match the order', async () => {
+    await seedFlat()
+    const base = { name: 'P', color: '#f57c00', uid: null, active: true }
+    const add = (id: string, order: number) =>
+      setDoc(doc(db(OWNER), `flats/${FLAT}/members/${id}`), { ...base, order })
+    await assertSucceeds(add('m19', 19))
+    await assertFails(add('m20', 20))
+    await assertFails(add('m7', 8))
+    await assertFails(add('random-id', 5))
+  })
+
+  it('bounds the week of a completion', async () => {
+    await seedFlat()
+    const completion = (weekIndex: number) => ({
+      weekIndex,
+      zone: 'Kitchen',
+      memberId: 'm-owner',
+      doneAt: '2026-10-13',
+    })
+    await assertSucceeds(
+      setDoc(doc(db(OWNER), `flats/${FLAT}/completions/1040_Kitchen`), completion(1040)),
+    )
+    await assertFails(
+      setDoc(doc(db(OWNER), `flats/${FLAT}/completions/1041_Kitchen`), completion(1041)),
+    )
   })
 })
 
@@ -201,17 +290,17 @@ describe('members', () => {
   it('lets the owner add members and blocks everybody else', async () => {
     await seedFlat()
     const member = { name: 'Carl', color: '#f57c00', uid: null, active: true, order: 2 }
-    await assertSucceeds(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-new`), member))
-    await assertFails(setDoc(doc(db(STRANGER), `flats/${FLAT}/members/m-new2`), member))
+    await assertSucceeds(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m2`), member))
+    await assertFails(setDoc(doc(db(STRANGER), `flats/${FLAT}/members/m2`), member))
   })
 
   it('requires a non-negative integer order', async () => {
     await seedFlat()
     const base = { name: 'Carl', color: '#f57c00', uid: null, active: true }
-    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-a`), base))
-    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-b`), { ...base, order: -1 }))
-    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-c`), { ...base, order: 1.5 }))
-    await assertSucceeds(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-d`), { ...base, order: 3 }))
+    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m9`), base))
+    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m-1`), { ...base, order: -1 }))
+    await assertFails(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m1.5`), { ...base, order: 1.5 }))
+    await assertSucceeds(setDoc(doc(db(OWNER), `flats/${FLAT}/members/m3`), { ...base, order: 3 }))
   })
 
   it('never allows deleting members', async () => {

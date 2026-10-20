@@ -13,6 +13,8 @@ const MAX_FLAT_NAME = 60
 const MAX_MEMBER_NAME = 40
 const MAX_ZONE_NAME = 60
 const MAX_ITEMS = 20
+// Flats one identity (in practice, one browser profile) can create; the rules enforce the same cap
+export const MAX_FLATS_PER_IDENTITY = 3
 
 // No 0, 1, O or I: codes are read aloud and typed by hand.
 const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
