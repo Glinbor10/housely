@@ -36,7 +36,8 @@ jobs:
     name: Create release and deploy to production
     runs-on: ubuntu-latest
     needs: [verify]
-    # Configure required reviewers on this environment to approve every production deploy
+    # Only the owner can run this workflow and the environment accepts protected branches only;
+    # required reviewers can be added here once the repository is public
     environment: production
     permissions:
       contents: write
