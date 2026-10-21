@@ -143,3 +143,30 @@ test('the owner releases a flatmate who lost their phone, and they rejoin from a
   await oldPhone.context.close()
   await newPhone.context.close()
 })
+
+test('every section fits the phone: no horizontal scroll and no layout shift', async ({ page }) => {
+  // Layout shifts are recorded from the very first paint
+  await page.addInitScript(() => {
+    ;(window as unknown as { shifts: number }).shifts = 0
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<
+        PerformanceEntry & { value: number; hadRecentInput: boolean }
+      >) {
+        if (!entry.hadRecentInput) (window as unknown as { shifts: number }).shifts += entry.value
+      }
+    }).observe({ type: 'layout-shift', buffered: true })
+  })
+  await createFlat(page, uniqueName())
+
+  for (const tab of ['Week', 'People', 'Flat'] as const) {
+    await openTab(page, tab)
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    )
+    expect(overflow, `${tab} scrolls sideways`).toBeLessThanOrEqual(0)
+  }
+
+  // 0.1 is the limit Google calls "good" for Cumulative Layout Shift
+  const shifts = await page.evaluate(() => (window as unknown as { shifts: number }).shifts)
+  expect(shifts).toBeLessThan(0.1)
+})
