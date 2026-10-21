@@ -12,6 +12,25 @@ export const es: Record<keyof typeof en, string> = {
   'common.somethingWentWrong': 'Algo ha ido mal. Inténtalo de nuevo.',
   'common.language': 'Idioma',
 
+  // Sections
+  'tab.sections': 'Secciones',
+  'tab.week': 'Semana',
+  'tab.history': 'Historial',
+  'tab.people': 'Personas',
+  'tab.flat': 'Piso',
+
+  // History
+  'history.empty': 'Todavía no hay nada que mostrar.',
+  'history.byPerson': 'Por persona',
+  'history.byZone': 'Por zona',
+  'history.weeks': 'Semana a semana',
+  'history.weekOf': 'Semana {n} · desde {date}',
+  'history.progress': '{done} de {assigned} hechas',
+  'history.missedCount': '{n} sin hacer',
+  'history.missed': 'Sin hacer',
+  'history.resting': 'Descansan: {names}',
+  'history.showOlder': 'Ver semanas anteriores',
+
   // Welcome
   'welcome.tagline':
     'Repartid las tareas del piso: cada semana a cada persona le toca una zona y la rotación hace el resto.',

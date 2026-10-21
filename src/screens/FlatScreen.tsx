@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Alert, Box, Button, Skeleton, Stack, Typography } from '@mui/material'
 import { BottomTabs, type Tab } from '../components/BottomTabs'
+import { HistoryView } from '../components/HistoryView'
 import { InviteCode } from '../components/InviteCode'
 import { MembersList } from '../components/MembersList'
 import { SaveAccessBanner } from '../components/SaveAccessBanner'
 import { ThisWeek } from '../components/ThisWeek'
 import { TricountLink } from '../components/TricountLink'
 import { findCompletion, toIsoDate, type Completion } from '../domain/completions'
+import { buildHistory, personStats, zoneStats } from '../domain/history'
+import { baseLayout } from '../domain/layouts'
 import { getAssignments, getRestingMembers, getWeekIndex } from '../domain/rotation'
 import { getFirebase } from '../firebase/app'
 import {
@@ -201,6 +204,14 @@ const FlatContent = ({
     doneAt: record.doneAt,
   }))
 
+  // Until the rotation can be edited every flat has a single layout: its current people and zones
+  const history = buildHistory({
+    layouts: [baseLayout(members, flat.zones)],
+    completions,
+    currentWeek: weekIndex,
+    startDate: flat.startDate,
+  })
+
   // Marking the last pending zone is what makes the week clean
   const finishesWeek = (zone: string): boolean => {
     const pending = assignments.filter((entry) => !findCompletion(done, weekIndex, entry.zone))
@@ -251,6 +262,14 @@ const FlatContent = ({
               </Typography>
             ) : null}
           </>
+        ) : tab === 'history' ? (
+          <HistoryView
+            weeks={history}
+            names={Object.fromEntries(names)}
+            currentWeek={weekIndex}
+            people={personStats(history, weekIndex)}
+            zones={zoneStats(history, weekIndex)}
+          />
         ) : tab === 'people' ? (
           <>
             <MembersList
