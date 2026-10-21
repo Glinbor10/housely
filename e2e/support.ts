@@ -91,9 +91,12 @@ export const createFlat = async (
     () => page.getByRole('button', { name: /continue with google/i }).click(),
     email,
   )
+  // The form has three steps: the flat, the people and the zones
   await page.getByLabel('Flat name').fill(flatName)
+  await page.getByRole('button', { name: /^next$/i }).click()
   await page.getByLabel('Person 1', { exact: true }).fill('Ana')
   await page.getByLabel('Person 2', { exact: true }).fill('Ben')
+  await page.getByRole('button', { name: /^next$/i }).click()
   await page.getByRole('button', { name: /create flat/i }).click()
   // The invite code lives in the People tab; the person comes back to this week afterwards
   await openTab(page, 'People')

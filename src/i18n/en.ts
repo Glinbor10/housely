@@ -63,6 +63,9 @@ export const en = {
 
   // Create flat
   'create.title': 'Create a flat',
+  'create.step': 'Step {n} of {total}',
+  'create.next': 'Next',
+  'create.stepTitle.flat': 'About the flat',
   'create.flatName': 'Flat name',
   'create.people': 'People (in rotation order)',
   'create.personIsMe': 'Person {n} is me',
