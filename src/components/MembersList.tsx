@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button, Stack, Typography } from '@mui/material'
+import { Alert, Avatar, Button, Card, CardContent, Stack, Typography } from '@mui/material'
 import { useTranslation } from '../i18n/useTranslation'
 
 interface Person {
@@ -36,51 +36,63 @@ export const MembersList = ({
       {members.map((member) => {
         const isMe = member.id === currentMemberId
         return (
-          <Stack key={member.id} spacing={1}>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography>{isMe ? t('common.you', { name: member.name }) : member.name}</Typography>
-              {member.claimed ? (
-                canManage && !isMe ? (
-                  <Button
-                    size="small"
-                    color="warning"
-                    aria-label={t('people.releaseAria', { name: member.name })}
-                    onClick={() => setConfirming(member.id)}
+          <Card key={member.id} variant="outlined">
+            <CardContent>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                  <Avatar
+                    aria-hidden="true"
+                    sx={{ bgcolor: member.claimed ? 'primary.main' : 'action.disabled' }}
                   >
-                    {t('people.release')}
-                  </Button>
-                ) : null
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  {t('people.waiting', { name: member.name })}
-                </Typography>
-              )}
-            </Stack>
-            {confirming === member.id ? (
-              <Alert
-                severity="warning"
-                action={
-                  <Stack direction="row" spacing={1}>
-                    <Button color="inherit" onClick={() => setConfirming(null)}>
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      color="inherit"
-                      disabled={busy}
-                      onClick={() => {
-                        onRelease(member.id)
-                        setConfirming(null)
-                      }}
-                    >
-                      {t('people.confirmYes')}
-                    </Button>
-                  </Stack>
-                }
-              >
-                {t('people.confirm', { name: member.name })}
-              </Alert>
-            ) : null}
-          </Stack>
+                    {member.name.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Typography sx={{ flexGrow: 1, fontWeight: 700 }}>
+                    {isMe ? t('common.you', { name: member.name }) : member.name}
+                  </Typography>
+                  {member.claimed ? (
+                    canManage && !isMe ? (
+                      <Button
+                        size="small"
+                        color="warning"
+                        aria-label={t('people.releaseAria', { name: member.name })}
+                        onClick={() => setConfirming(member.id)}
+                      >
+                        {t('people.release')}
+                      </Button>
+                    ) : null
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      {t('people.waiting', { name: member.name })}
+                    </Typography>
+                  )}
+                </Stack>
+                {confirming === member.id ? (
+                  <Alert
+                    severity="warning"
+                    action={
+                      <Stack direction="row" spacing={1}>
+                        <Button color="inherit" onClick={() => setConfirming(null)}>
+                          {t('common.cancel')}
+                        </Button>
+                        <Button
+                          color="inherit"
+                          disabled={busy}
+                          onClick={() => {
+                            onRelease(member.id)
+                            setConfirming(null)
+                          }}
+                        >
+                          {t('people.confirmYes')}
+                        </Button>
+                      </Stack>
+                    }
+                  >
+                    {t('people.confirm', { name: member.name })}
+                  </Alert>
+                ) : null}
+              </Stack>
+            </CardContent>
+          </Card>
         )
       })}
       {error ? <Alert severity="error">{error}</Alert> : null}
