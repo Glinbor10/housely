@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 import { collectProblems, createFlat, isBenignNetworkNoise, openTab } from '../support'
 
 const uniqueName = () => `E2E ${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -169,4 +170,35 @@ test('every section fits the phone: no horizontal scroll and no layout shift', a
   // 0.1 is the limit Google calls "good" for Cumulative Layout Shift
   const shifts = await page.evaluate(() => (window as unknown as { shifts: number }).shifts)
   expect(shifts).toBeLessThan(0.1)
+})
+
+test('no screen has accessibility violations (axe, WCAG 2 A and AA)', async ({ page }) => {
+  const check = async (screen: string) => {
+    // Cards fade in: measured halfway, their text would look paler than it is
+    await page.waitForTimeout(1200)
+    const result = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    const summary = result.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.nodes.map((node) => `${node.target} (${node.any[0]?.message})`).join(' | ')}`,
+    )
+    expect(summary, `${screen} has violations`).toEqual([])
+  }
+
+  await page.goto('/')
+  await page.getByRole('button', { name: /create a flat/i }).waitFor()
+  await check('welcome')
+
+  await createFlat(page, uniqueName())
+  await check('week')
+  await openTab(page, 'People')
+  await check('people')
+  await openTab(page, 'Flat')
+  await check('flat')
+
+  // The same screens with the dark palette, where contrast is easiest to get wrong
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await openTab(page, 'Week')
+  await check('week in dark mode')
 })

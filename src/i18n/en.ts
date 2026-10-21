@@ -119,6 +119,7 @@ export const en = {
   'week.done': 'Done {date}',
   'week.pending': 'Pending',
   'week.markDone': 'Mark as done',
+  'week.doneDate': 'Date done: {zone}',
   'week.updateDate': 'Update date',
   'week.resting': 'Free this week: {names}',
 

@@ -34,6 +34,11 @@ describe('ThisWeek', () => {
     expect(screen.getAllByRole('button', { name: /mark as done/i })).toHaveLength(1)
   })
 
+  it('labels the date of each zone, so a screen reader says what it is for', () => {
+    renderWeek()
+    expect(screen.getByLabelText('Date done: Kitchen')).toBeTruthy()
+  })
+
   it('marks as done with today by default', async () => {
     const onMarkDone = vi.fn()
     renderWeek({ onMarkDone })

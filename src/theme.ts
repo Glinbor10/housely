@@ -43,7 +43,13 @@ export const themeOptions: ThemeOptions = {
     },
     MuiToggleButton: {
       styleOverrides: {
-        root: { minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET, textTransform: 'none' },
+        root: {
+          minHeight: MIN_TOUCH_TARGET,
+          minWidth: MIN_TOUCH_TARGET,
+          textTransform: 'none',
+          // The default grey of an unselected button does not reach the 4.5:1 contrast of WCAG AA
+          color: 'inherit',
+        },
       },
     },
     MuiCard: { styleOverrides: { root: { borderRadius: 28 } } },
