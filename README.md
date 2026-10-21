@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/hero.png" alt="Housely on four phones: the welcome screen, the form to create a flat, this week's chores with colored avatars and a progress bar, and the same screen in dark mode" />
+  <img src="docs/assets/hero.png" alt="Housely on four phones: the welcome screen with Housy the mascot, this week's chores with a progress ring and bottom navigation, the people of the flat, and the same screen in dark mode" />
 </p>
 
 <h1 align="center">Housely</h1>
