@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Skeleton, Stack, Typography } from '@mui/material'
+import { BottomTabs, type Tab } from '../components/BottomTabs'
 import { InviteCode } from '../components/InviteCode'
 import { MembersList } from '../components/MembersList'
 import { SaveAccessBanner } from '../components/SaveAccessBanner'
 import { ThisWeek } from '../components/ThisWeek'
 import { TricountLink } from '../components/TricountLink'
-import { toIsoDate, type Completion } from '../domain/completions'
+import { findCompletion, toIsoDate, type Completion } from '../domain/completions'
 import { getAssignments, getRestingMembers, getWeekIndex } from '../domain/rotation'
 import { getFirebase } from '../firebase/app'
 import {
@@ -21,6 +22,7 @@ import {
   type MemberRecord,
 } from '../firebase/flatRepository'
 import { openGoogle } from '../firebase/googleSignIn'
+import { buzz, celebrate } from '../effects/celebrate'
 import { useAction } from '../hooks/useAction'
 import { useSubscription } from '../hooks/useSubscription'
 import { dismissSaveAccess, isSaveAccessDismissed } from '../storage/preferences'
@@ -93,8 +95,11 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
       {leaveLostFlat}
     </Stack>
   ) : !flat.ready || !members.ready || !completions.ready || flat.value === null ? (
-    <Stack sx={{ alignItems: 'center', py: 6 }}>
-      <CircularProgress aria-label={t('common.loading')} />
+    <Stack spacing={2} aria-busy="true" aria-label={t('common.loading')} role="status">
+      <Skeleton variant="text" width="60%" height={48} />
+      <Skeleton variant="rounded" height={116} />
+      <Skeleton variant="rounded" height={96} />
+      <Skeleton variant="rounded" height={96} />
     </Stack>
   ) : (
     <Stack spacing={2}>
@@ -153,7 +158,7 @@ interface FlatContentProps {
   releaseBusy: boolean
   releaseError: string | null
   onSaveTricount: (url: string | null) => void
-  onSave: (record: CompletionRecord) => void
+  onSave: (record: CompletionRecord) => Promise<boolean>
   onRelease: (memberId: string) => void
   leave: React.ReactNode
 }
@@ -176,6 +181,7 @@ const FlatContent = ({
   leave,
 }: FlatContentProps) => {
   const { t } = useTranslation()
+  const [tab, setTab] = useState<Tab>('week')
   const names = new Map(members.map((member) => [member.id, member.name]))
   const weekIndex = getWeekIndex(new Date(`${flat.startDate}T00:00:00`), now)
   const assignments = getAssignments(
@@ -195,55 +201,86 @@ const FlatContent = ({
     doneAt: record.doneAt,
   }))
 
+  // Marking the last pending zone is what makes the week clean
+  const finishesWeek = (zone: string): boolean => {
+    const pending = assignments.filter((entry) => !findCompletion(done, weekIndex, entry.zone))
+    return pending.length === 1 && pending[0].zone === zone
+  }
+
+  const markDone = async (entry: Completion) => {
+    const completesTheWeek = finishesWeek(entry.zone)
+    const saved = await onSave({
+      weekIndex: entry.weekIndex,
+      zone: entry.zone,
+      memberId: session.memberId,
+      doneAt: entry.doneAt,
+    })
+    // Celebrate only what really got saved
+    if (saved) {
+      buzz()
+      if (completesTheWeek) await celebrate()
+    }
+  }
+
   return (
-    <Stack spacing={2}>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-        {flat.name}
-      </Typography>
-      <Typography color="text.secondary">{t('week.title', { n: weekIndex + 1 })}</Typography>
-      <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
-      {saveError ? <Alert severity="error">{saveError}</Alert> : null}
-      <ThisWeek
-        weekIndex={weekIndex}
-        assignments={assignments}
-        completions={done}
-        currentMember={names.get(session.memberId) ?? ''}
-        colors={Object.fromEntries(members.map((member) => [member.name, member.color]))}
-        today={toIsoDate(now)}
-        onMarkDone={(entry) =>
-          onSave({
-            weekIndex: entry.weekIndex,
-            zone: entry.zone,
-            memberId: session.memberId,
-            doneAt: entry.doneAt,
-          })
-        }
-      />
-      {resting.length > 0 ? (
-        <Typography color="text.secondary">
-          {t('week.resting', { names: resting.join(', ') })}
-        </Typography>
-      ) : null}
-      <MembersList
-        members={members.map((member) => ({
-          id: member.id,
-          name: member.name,
-          claimed: member.uid !== null,
-        }))}
-        currentMemberId={session.memberId}
-        canManage={isOwner}
-        busy={releaseBusy}
-        error={releaseError}
-        onRelease={onRelease}
-      />
-      <TricountLink
-        url={flat.tricountUrl}
-        canEdit={isOwner}
-        busy={tricountBusy}
-        error={tricountError}
-        onSave={onSaveTricount}
-      />
-      {leave}
-    </Stack>
+    <>
+      <Stack spacing={2} sx={{ pb: 12 }}>
+        <Box>
+          <Typography variant="h4" component="h1">
+            {flat.name}
+          </Typography>
+          {tab === 'week' ? (
+            <Typography color="text.secondary">{t('week.title', { n: weekIndex + 1 })}</Typography>
+          ) : null}
+        </Box>
+        {tab === 'week' ? (
+          <>
+            {saveError ? <Alert severity="error">{saveError}</Alert> : null}
+            <ThisWeek
+              weekIndex={weekIndex}
+              assignments={assignments}
+              completions={done}
+              currentMember={names.get(session.memberId) ?? ''}
+              colors={Object.fromEntries(members.map((member) => [member.name, member.color]))}
+              today={toIsoDate(now)}
+              onMarkDone={markDone}
+            />
+            {resting.length > 0 ? (
+              <Typography color="text.secondary">
+                {t('week.resting', { names: resting.join(', ') })}
+              </Typography>
+            ) : null}
+          </>
+        ) : tab === 'people' ? (
+          <>
+            <MembersList
+              members={members.map((member) => ({
+                id: member.id,
+                name: member.name,
+                claimed: member.uid !== null,
+              }))}
+              currentMemberId={session.memberId}
+              canManage={isOwner}
+              busy={releaseBusy}
+              error={releaseError}
+              onRelease={onRelease}
+            />
+            <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
+          </>
+        ) : (
+          <>
+            <TricountLink
+              url={flat.tricountUrl}
+              canEdit={isOwner}
+              busy={tricountBusy}
+              error={tricountError}
+              onSave={onSaveTricount}
+            />
+            {leave}
+          </>
+        )}
+      </Stack>
+      <BottomTabs value={tab} onChange={setTab} />
+    </>
   )
 }

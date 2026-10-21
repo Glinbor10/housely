@@ -13,7 +13,6 @@ export const es: Record<keyof typeof en, string> = {
   'common.language': 'Idioma',
 
   // Welcome
-  'welcome.logoAlt': 'Logotipo de Housely',
   'welcome.tagline':
     'Repartid las tareas del piso: cada semana a cada persona le toca una zona y la rotación hace el resto.',
   'welcome.create': 'Crear un piso',

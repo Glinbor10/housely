@@ -70,6 +70,14 @@ export const signInWithGoogleEmulator = async (
   await closed
 }
 
+// The bottom navigation of the flat
+export const openTab = async (page: Page, name: 'Week' | 'People' | 'Flat'): Promise<void> => {
+  await page
+    .getByRole('navigation', { name: /sections/i })
+    .getByRole('button', { name })
+    .click()
+}
+
 // Creates a flat the way a person does: with Google, then the form. Returns the invite code.
 export const createFlat = async (
   page: Page,
@@ -87,8 +95,12 @@ export const createFlat = async (
   await page.getByLabel('Person 1', { exact: true }).fill('Ana')
   await page.getByLabel('Person 2', { exact: true }).fill('Ben')
   await page.getByRole('button', { name: /create flat/i }).click()
+  // The invite code lives in the People tab; the person comes back to this week afterwards
+  await openTab(page, 'People')
   await page.getByText(/invite code/i).waitFor()
-  return ((await page.locator('strong').first().textContent()) ?? '').trim()
+  const code = ((await page.locator('strong').first().textContent()) ?? '').trim()
+  await openTab(page, 'Week')
+  return code
 }
 
 // A flatmate joins with the code, anonymously, picking their name.

@@ -13,7 +13,6 @@ export const en = {
   'common.language': 'Language',
 
   // Welcome
-  'welcome.logoAlt': 'Housely logo',
   'welcome.tagline':
     'Share the chores of your flat: every week each person gets a zone and the rotation does the rest.',
   'welcome.create': 'Create a flat',

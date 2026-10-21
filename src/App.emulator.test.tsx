@@ -85,7 +85,6 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /create flat/i }))
 
     expect(await screen.findByText('Integration flat', {}, { timeout: 15000 })).toBeTruthy()
-    expect(screen.getByText(/invite code/i)).toBeTruthy()
     // With 3 zones and 2 people the creator has two zones this week
     expect(screen.getAllByText('Ana (you)').length).toBeGreaterThan(0)
     // The owner signed in with Google, so there is nothing to save
@@ -97,6 +96,12 @@ describe('App', () => {
       timeout: 15000,
     })
 
+    // The invite code lives in the People tab
+    await userEvent.click(screen.getByRole('button', { name: /^people$/i }))
+    expect(screen.getByText(/invite code/i)).toBeTruthy()
+
+    // And the Tricount link in the Flat tab
+    await userEvent.click(screen.getByRole('button', { name: /^flat$/i }))
     await userEvent.click(screen.getByRole('button', { name: /add tricount link/i }))
     await userEvent.type(screen.getByLabelText('Tricount link'), 'https://tricount.com/tINTEG')
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
@@ -128,7 +133,7 @@ describe('App', () => {
       { timeout: 15000 },
     )
     await userEvent.click(flat)
-    expect(await screen.findByText(/invite code/i, {}, { timeout: 15000 })).toBeTruthy()
+    expect(await screen.findByText(/^week \d+$/i, {}, { timeout: 15000 })).toBeTruthy()
     expect(screen.getAllByText('Ana (you)').length).toBeGreaterThan(0)
   }, 90000)
 })

@@ -13,7 +13,7 @@ describe('useAction', () => {
   it('is busy while the action runs and idle afterwards', async () => {
     const { result } = renderHook(() => useAction())
     let finish: () => void = () => {}
-    let running: Promise<void> = Promise.resolve()
+    let running: Promise<boolean> = Promise.resolve(true)
     act(() => {
       running = result.current.run(() => new Promise<void>((resolve) => (finish = resolve)))
     })
@@ -24,6 +24,18 @@ describe('useAction', () => {
     })
     expect(result.current.busy).toBe(false)
     expect(result.current.error).toBeNull()
+  })
+
+  it('tells whether the action worked, so the caller can celebrate only a real success', async () => {
+    const { result } = renderHook(() => useAction())
+    let worked: boolean | undefined
+    let failed: boolean | undefined
+    await act(async () => {
+      worked = await result.current.run(() => Promise.resolve())
+      failed = await result.current.run(() => Promise.reject(new Error('denied')))
+    })
+    expect(worked).toBe(true)
+    expect(failed).toBe(false)
   })
 
   it('keeps the message of a failed action', async () => {

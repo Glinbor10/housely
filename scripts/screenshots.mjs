@@ -1,13 +1,26 @@
+import { spawn } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { chromium, devices } from '@playwright/test'
 import sharp from 'sharp'
+import { createFlat, openTab } from '../e2e/support.ts'
 
-// Takes real screenshots of the app and composes the README hero. Usage:
-//   E2E_BASE_URL=https://housely-ci.web.app npm run screenshots
-// It creates one demo flat in the target environment (use the CI one, never production).
-const baseURL = process.env.E2E_BASE_URL ?? 'https://housely-ci.web.app'
-if (/housely-prod/.test(baseURL)) {
-  throw new Error('Refusing to write demo data into production: use the CI environment')
+// Takes real screenshots of the app and composes the README hero. Usage: npm run screenshots
+// It runs the app against the local Firebase emulators (see the npm script), so it never writes
+// demo data anywhere real and can sign in with the simulated Google popup.
+const baseURL = 'http://localhost:4173'
+const preview = spawn('npx', ['vite', 'preview', '--port', '4173', '--strictPort'], {
+  shell: true,
+  stdio: 'ignore',
+})
+const stopPreview = () => preview.kill()
+process.on('exit', stopPreview)
+for (let attempt = 0; attempt < 60; attempt += 1) {
+  const ready = await fetch(baseURL).then(
+    (response) => response.ok,
+    () => false,
+  )
+  if (ready) break
+  await new Promise((resolve) => setTimeout(resolve, 500))
 }
 
 const OUTPUT = 'docs/assets'
@@ -15,7 +28,12 @@ const SCREENS = `${OUTPUT}/screens`
 mkdirSync(SCREENS, { recursive: true })
 
 const browser = await chromium.launch()
-const phone = { ...devices['Pixel 7'], viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }
+const phone = {
+  ...devices['Pixel 7'],
+  locale: 'en-US',
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 2,
+}
 
 const shot = async (page, name) => {
   await page.waitForTimeout(600)
@@ -24,26 +42,13 @@ const shot = async (page, name) => {
 }
 
 // --- First phone: creates the flat ---------------------------------------------------------
-const creator = await browser.newContext(phone)
+const creator = await browser.newContext({ ...phone, baseURL })
 const page = await creator.newPage()
-await page.goto(baseURL)
+await page.goto('/')
 await page.getByRole('button', { name: /create a flat/i }).waitFor()
 await shot(page, 'welcome')
 
-await page.getByRole('button', { name: /create a flat/i }).click()
-await page.getByLabel('Flat name').fill('Calle Luna 12')
-const people = ['Ana', 'Ben', 'Carla', 'Dani']
-await page.getByLabel('Person 1', { exact: true }).fill(people[0])
-await page.getByLabel('Person 2', { exact: true }).fill(people[1])
-for (const [index, name] of people.slice(2).entries()) {
-  await page.getByRole('button', { name: /add person/i }).click()
-  await page.getByLabel(`Person ${index + 3}`, { exact: true }).fill(name)
-}
-await shot(page, 'create-flat')
-
-await page.getByRole('button', { name: /create flat/i }).click()
-await page.getByText(/invite code/i).waitFor()
-const code = ((await page.locator('strong').first().textContent()) ?? '').trim()
+const code = await createFlat(page, 'Calle Luna 12')
 await page
   .getByRole('button', { name: /mark as done/i })
   .first()
@@ -54,14 +59,18 @@ await page
   .waitFor()
 await shot(page, 'this-week')
 
+await openTab(page, 'People')
+await shot(page, 'people')
+await openTab(page, 'Week')
+
 await page.emulateMedia({ colorScheme: 'dark' })
 await shot(page, 'this-week-dark')
 await creator.close()
 
 // --- Second phone: joins with the invite code ----------------------------------------------
-const flatmate = await browser.newContext(phone)
+const flatmate = await browser.newContext({ ...phone, baseURL })
 const second = await flatmate.newPage()
-await second.goto(baseURL)
+await second.goto('/')
 await second.getByRole('button', { name: /join a flat/i }).click()
 await second.getByLabel('Invite code').fill(code)
 await second.getByRole('button', { name: /continue/i }).click()
@@ -69,6 +78,7 @@ await second.getByRole('button', { name: 'Ben' }).waitFor()
 await shot(second, 'join')
 await flatmate.close()
 await browser.close()
+stopPreview()
 
 // --- Phone mockups and the hero ------------------------------------------------------------
 const WIDTH = 330
@@ -99,8 +109,8 @@ const framed = async (name) => {
   return { image, width: outerWidth, height: outerHeight, radius: radius + BEZEL }
 }
 
-// The journey: open, create, this week, and the same screen in dark mode
-const order = ['welcome', 'create-flat', 'this-week', 'this-week-dark']
+// The journey: open, this week, people, and the same screen in dark mode
+const order = ['welcome', 'this-week', 'people', 'this-week-dark']
 const phones = await Promise.all(order.map(framed))
 const GAP = 44
 const MARGIN = 90

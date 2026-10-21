@@ -10,16 +10,19 @@ interface ActionState {
 export const useAction = () => {
   const [state, setState] = useState<ActionState>({ busy: false, error: null })
 
-  const run = async (action: () => Promise<void>): Promise<void> => {
+  // Resolves to whether the action worked
+  const run = async (action: () => Promise<void>): Promise<boolean> => {
     setState({ busy: true, error: null })
     try {
       await action()
       setState({ busy: false, error: null })
+      return true
     } catch (failure) {
       setState({
         busy: false,
         error: describeError(failure),
       })
+      return false
     }
   }
 

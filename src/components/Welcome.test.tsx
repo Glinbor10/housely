@@ -15,10 +15,9 @@ describe('Welcome', () => {
     expect(onJoin).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the logo of the app', () => {
+  it('welcomes with the mascot of the app', () => {
     render(<Welcome onCreate={() => {}} onJoin={() => {}} onSignIn={() => {}} />)
-    const logo = screen.getByRole('img', { name: /housely logo/i })
-    expect(logo.getAttribute('src')).toBe('/logo.svg')
+    expect(screen.getByRole('img', { name: /housy the mascot/i })).toBeTruthy()
   })
 
   it('lets people who already have a flat sign in to find it', async () => {
