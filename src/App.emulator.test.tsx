@@ -80,8 +80,10 @@ describe('App', () => {
       await screen.findByLabelText('Flat name', {}, { timeout: 15000 }),
       'Integration flat',
     )
+    await userEvent.click(screen.getByRole('button', { name: /^next$/i }))
     await userEvent.type(screen.getByLabelText('Person 1'), 'Ana')
     await userEvent.type(screen.getByLabelText('Person 2'), 'Ben')
+    await userEvent.click(screen.getByRole('button', { name: /^next$/i }))
     await userEvent.click(screen.getByRole('button', { name: /create flat/i }))
 
     expect(await screen.findByText('Integration flat', {}, { timeout: 15000 })).toBeTruthy()

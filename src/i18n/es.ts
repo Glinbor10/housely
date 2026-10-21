@@ -65,6 +65,9 @@ export const es: Record<keyof typeof en, string> = {
 
   // Create flat
   'create.title': 'Crear un piso',
+  'create.step': 'Paso {n} de {total}',
+  'create.next': 'Siguiente',
+  'create.stepTitle.flat': 'Sobre el piso',
   'create.flatName': 'Nombre del piso',
   'create.people': 'Personas (en orden de rotación)',
   'create.personIsMe': 'La persona {n} soy yo',
