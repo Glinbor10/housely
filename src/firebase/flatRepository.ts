@@ -18,12 +18,16 @@ import {
   validateDraft,
   type FlatDraft,
 } from '../domain/flat'
+import type { RotationLayout } from '../domain/layouts'
+import type { RotationPlan } from '../domain/rotationEdit'
 import type { LocalizedError } from '../i18n/describeError'
 export interface FlatRecord {
   id: string
   name: string
   startDate: string
   zones: string[]
+  // The zones in force before the last rotation edit: still valid until the new layout starts
+  previousZones?: string[]
   inviteCode: string
   ownerUid: string
   tricountUrl?: string
@@ -288,3 +292,50 @@ export const deleteCompletion = (
 
 export const setTricountUrl = (db: Firestore, flatId: string, url: string | null): Promise<void> =>
   updateDoc(flatRef(db, flatId), { tricountUrl: url === null ? deleteField() : url })
+
+export const subscribeLayouts = (
+  db: Firestore,
+  flatId: string,
+  onChange: (layouts: RotationLayout[]) => void,
+  onError: ErrorCallback,
+): (() => void) =>
+  onSnapshot(
+    collection(flatRef(db, flatId), 'layouts'),
+    (snapshot) =>
+      onChange(
+        snapshot.docs
+          .map((layout) => layout.data() as RotationLayout)
+          .sort((a, b) => a.fromWeek - b.fromWeek),
+      ),
+    onError,
+  )
+
+// People, zones and layouts change together or not at all: a half applied edit would leave the
+// rotation pointing at people or zones that do not exist.
+export const saveRotation = async (
+  db: Firestore,
+  flatId: string,
+  plan: RotationPlan,
+): Promise<void> => {
+  const batch = writeBatch(db)
+  const flat = flatRef(db, flatId)
+  for (const write of plan.memberWrites) {
+    const member = doc(flat, 'members', write.id)
+    if (write.isNew) {
+      batch.set(member, {
+        name: write.name,
+        color: MEMBER_COLORS[write.order % MEMBER_COLORS.length],
+        uid: null,
+        active: true,
+        order: write.order,
+      })
+    } else {
+      batch.update(member, { name: write.name, active: write.active })
+    }
+  }
+  for (const layout of plan.layouts) {
+    batch.set(doc(flat, 'layouts', String(layout.fromWeek)), layout)
+  }
+  batch.update(flat, { zones: plan.zones, previousZones: plan.previousZones })
+  await batch.commit()
+}

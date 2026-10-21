@@ -587,3 +587,119 @@ describe('completions', () => {
     await assertSucceeds(deleteDoc(doc(db(OWNER), path)))
   })
 })
+
+describe('editing the rotation', () => {
+  const layout = (overrides: Record<string, unknown> = {}) => ({
+    fromWeek: 5,
+    members: ['m-owner', 'm-free'],
+    zones: ['Kitchen'],
+    ...overrides,
+  })
+  const layoutPath = (id: string | number) => `flats/${FLAT}/layouts/${id}`
+
+  // Ben joined, so he is a member of the flat but not its owner
+  const seedBenJoined = async () => {
+    await seedFlat()
+    await env.withSecurityRulesDisabled(async (context) => {
+      const firestore = context.firestore()
+      await updateDoc(doc(firestore, `flats/${FLAT}/members/m-free`), { uid: FLATMATE })
+      await setDoc(doc(firestore, `flats/${FLAT}/users/${FLATMATE}`), { memberId: 'm-free' })
+    })
+  }
+
+  it('lets the owner store a layout, and store it again to correct it', async () => {
+    await seedFlat()
+    const path = layoutPath(5)
+    await assertSucceeds(setDoc(doc(db(OWNER), path), layout()))
+    await assertSucceeds(setDoc(doc(db(OWNER), path), layout({ zones: ['Kitchen', 'Garden'] })))
+  })
+
+  it('does not let a flatmate or a stranger store one', async () => {
+    await seedBenJoined()
+    await assertFails(setDoc(doc(db(FLATMATE), layoutPath(5)), layout()))
+    await assertFails(setDoc(doc(db(STRANGER), layoutPath(5)), layout()))
+    await assertFails(setDoc(doc(db(null), layoutPath(5)), layout()))
+  })
+
+  it('lets members read the layouts and nobody else', async () => {
+    await seedBenJoined()
+    await env.withSecurityRulesDisabled((context) =>
+      setDoc(doc(context.firestore(), layoutPath(5)), layout()),
+    )
+    await assertSucceeds(getDoc(doc(db(FLATMATE), layoutPath(5))))
+    await assertSucceeds(getDoc(doc(db(OWNER), layoutPath(5))))
+    await assertFails(getDoc(doc(db(STRANGER), layoutPath(5))))
+    await assertFails(getDocs(collection(db(STRANGER), `flats/${FLAT}/layouts`)))
+  })
+
+  it('never deletes a layout: the history depends on them', async () => {
+    await seedFlat()
+    await setDoc(doc(db(OWNER), layoutPath(5)), layout())
+    await assertFails(deleteDoc(doc(db(OWNER), layoutPath(5))))
+  })
+
+  it.each([
+    ['an id that is not its week', layoutPath(6), layout()],
+    ['a negative week', layoutPath(-1), layout({ fromWeek: -1 })],
+    ['a week beyond the limit', layoutPath(1041), layout({ fromWeek: 1041 })],
+    ['a week that is not an integer', layoutPath('5.5'), layout({ fromWeek: 5.5 })],
+    ['nobody in the rotation', layoutPath(5), layout({ members: [] })],
+    [
+      'more than 20 people',
+      layoutPath(5),
+      layout({ members: Array.from({ length: 21 }, (_, i) => `m${i}`) }),
+    ],
+    ['no zones', layoutPath(5), layout({ zones: [] })],
+    [
+      'more than 20 zones',
+      layoutPath(5),
+      layout({ zones: Array.from({ length: 21 }, (_, i) => `z${i}`) }),
+    ],
+    ['an unknown field', layoutPath(5), layout({ admin: true })],
+  ])('rejects %s', async (_label, path, data) => {
+    await seedFlat()
+    await assertFails(setDoc(doc(db(OWNER), path), data))
+  })
+
+  it('lets the owner rename or deactivate a flatmate who already joined', async () => {
+    await seedBenJoined()
+    const member = doc(db(OWNER), `flats/${FLAT}/members/m-free`)
+    await assertSucceeds(updateDoc(member, { name: 'Benjamin' }))
+    await assertSucceeds(updateDoc(member, { active: false }))
+    // ...but still cannot hand their account to somebody else
+    await assertFails(updateDoc(member, { uid: STRANGER }))
+  })
+
+  it('keeps the zones of this week usable until the new layout starts', async () => {
+    await seedFlat()
+    const flat = doc(db(OWNER), `flats/${FLAT}`)
+    // The owner removes Kitchen (from next week) and remembers the zones in force now
+    await assertSucceeds(
+      updateDoc(flat, { zones: ['Bathroom', 'Garden'], previousZones: ['Kitchen', 'Bathroom'] }),
+    )
+    const completion = (zone: string) => ({
+      weekIndex: 3,
+      zone,
+      memberId: 'm-owner',
+      doneAt: '2026-10-30',
+    })
+    await assertSucceeds(
+      setDoc(doc(db(OWNER), `flats/${FLAT}/completions/3_Kitchen`), completion('Kitchen')),
+    )
+    await assertSucceeds(
+      setDoc(doc(db(OWNER), `flats/${FLAT}/completions/3_Garden`), completion('Garden')),
+    )
+    await assertFails(
+      setDoc(doc(db(OWNER), `flats/${FLAT}/completions/3_Garage`), completion('Garage')),
+    )
+  })
+
+  it('limits the remembered zones like the zones', async () => {
+    await seedFlat()
+    const flat = doc(db(OWNER), `flats/${FLAT}`)
+    await assertFails(
+      updateDoc(flat, { previousZones: Array.from({ length: 21 }, (_, i) => `z${i}`) }),
+    )
+    await assertFails(updateDoc(flat, { previousZones: 'Kitchen' }))
+  })
+})

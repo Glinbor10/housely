@@ -41,29 +41,47 @@ service cloud.firestore {
     }
 
     function isValidFlat(data) {
-      return data.keys().hasOnly(['name', 'startDate', 'zones', 'tricountUrl', 'inviteCode', 'ownerUid', 'createdAt'])
+      return data.keys().hasOnly(['name', 'startDate', 'zones', 'previousZones', 'tricountUrl', 'inviteCode', 'ownerUid', 'createdAt'])
         && data.keys().hasAll(['name', 'startDate', 'zones', 'inviteCode', 'ownerUid'])
         && isShortText(data.name, 60)
         && data.startDate is string && data.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && data.zones is list && data.zones.size() >= 1 && data.zones.size() <= 20
+        // The zones in force until a new rotation layout starts: still valid to mark as done
+        && (!('previousZones' in data) || (data.previousZones is list && data.previousZones.size() <= 20))
         && isShortText(data.inviteCode, 12)
         && (!('tricountUrl' in data) || (data.tricountUrl is string && data.tricountUrl.size() <= 300 && data.tricountUrl.matches('^https://([a-z0-9-]+\\.)*tricount\\.com(/.*)?$')));
     }
 
-    function isValidMember(data) {
+    // The shape of a member. Who may hold its uid is decided where it is created or updated.
+    function isValidMemberShape(data) {
       return data.keys().hasOnly(['name', 'color', 'uid', 'active', 'order'])
         && data.keys().hasAll(['name', 'uid', 'active', 'order'])
         && isShortText(data.name, 40)
         && data.active is bool
-        && data.order is int && data.order >= 0
+        && data.order is int && data.order >= 0;
+    }
+
+    function isValidMember(data) {
+      return isValidMemberShape(data)
         && (data.uid == null || data.uid == request.auth.uid);
+    }
+
+    // What the rotation looked like from a week on. The id is the week, so there is one per week.
+    function isValidLayout(layoutId, data) {
+      return data.keys().hasOnly(['fromWeek', 'members', 'zones'])
+        && data.keys().hasAll(['fromWeek', 'members', 'zones'])
+        && data.fromWeek is int && data.fromWeek >= 0 && data.fromWeek <= 1040
+        && layoutId == string(data.fromWeek)
+        && data.members is list && data.members.size() >= 1 && data.members.size() <= 20
+        && data.zones is list && data.zones.size() >= 1 && data.zones.size() <= 20;
     }
 
     function isValidCompletion(flatId, completionId, data) {
       return data.keys().hasOnly(['weekIndex', 'zone', 'memberId', 'doneAt'])
         && data.weekIndex is int && data.weekIndex >= 0 && data.weekIndex <= 1040
         && isShortText(data.zone, 60)
-        && data.zone in get(flatPath(flatId)).data.zones
+        && (data.zone in get(flatPath(flatId)).data.zones
+          || data.zone in get(flatPath(flatId)).data.get('previousZones', []))
         && completionId == string(data.weekIndex) + '_' + data.zone
         && data.memberId == memberIdOf(flatId)
         && data.doneAt is string && data.doneAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
@@ -127,7 +145,7 @@ service cloud.firestore {
               request.resource.data.uid == resource.data.uid
               || (request.resource.data.uid == null && resource.data.uid != get(flatPath(flatId)).data.ownerUid)
             )
-            && isValidMember(request.resource.data)
+            && isValidMemberShape(request.resource.data)
           ) || (
             // A joiner claims an unclaimed member.
             signedIn()
@@ -135,6 +153,14 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid'])
             && request.resource.data.uid == request.auth.uid
           );
+        allow delete: if false;
+      }
+
+      // What the rotation looked like from each week on: editing people or zones adds a layout and
+      // never changes the weeks before it. Layouts are never deleted.
+      match /layouts/{layoutId} {
+        allow read: if isMember(flatId);
+        allow create, update: if isOwner(flatId) && isValidLayout(layoutId, request.resource.data);
         allow delete: if false;
       }
 
