@@ -105,6 +105,7 @@ export const ThisWeek = ({
                     <TextField
                       type="date"
                       size="small"
+                      slotProps={{ htmlInput: { 'aria-label': t('week.doneDate', { zone }) } }}
                       value={dates[zone] ?? today}
                       onChange={(event) => setDates({ ...dates, [zone]: event.target.value })}
                     />

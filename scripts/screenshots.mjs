@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { chromium, devices } from '@playwright/test'
 import sharp from 'sharp'
@@ -12,7 +12,11 @@ const preview = spawn('npx', ['vite', 'preview', '--port', '4173', '--strictPort
   shell: true,
   stdio: 'ignore',
 })
-const stopPreview = () => preview.kill()
+// With a shell, killing the child is not enough on Windows: the whole process tree has to go
+const stopPreview = () =>
+  process.platform === 'win32'
+    ? spawnSync('taskkill', ['/pid', String(preview.pid), '/T', '/F'], { stdio: 'ignore' })
+    : preview.kill()
 process.on('exit', stopPreview)
 for (let attempt = 0; attempt < 60; attempt += 1) {
   const ready = await fetch(baseURL).then(

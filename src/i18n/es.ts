@@ -124,6 +124,7 @@ export const es: Record<keyof typeof en, string> = {
   'week.done': 'Hecho {date}',
   'week.pending': 'Pendiente',
   'week.markDone': 'Marcar como hecho',
+  'week.doneDate': 'Fecha en que se hizo: {zone}',
   'week.updateDate': 'Actualizar fecha',
   'week.resting': 'Libres esta semana: {names}',
 
