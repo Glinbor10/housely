@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { readFirebaseConfig, shouldUseEmulators } from './config'
+import {
+  readAppCheckSiteKey,
+  readFirebaseConfig,
+  shouldUseAppCheck,
+  shouldUseEmulators,
+} from './config'
 
 const validEnv = {
   VITE_FIREBASE_API_KEY: 'key',
@@ -40,5 +45,29 @@ describe('shouldUseEmulators', () => {
 
   it.each([undefined, '', 'false', 'TRUE', '1'])('is disabled for %s', (value) => {
     expect(shouldUseEmulators({ VITE_USE_EMULATORS: value })).toBe(false)
+  })
+})
+
+describe('App Check', () => {
+  it('reads the reCAPTCHA site key of the environment', () => {
+    expect(readAppCheckSiteKey({ VITE_APPCHECK_SITE_KEY: ' site-key ' })).toBe('site-key')
+  })
+
+  it.each([undefined, '', '   '])('has no key for %j', (value) => {
+    expect(readAppCheckSiteKey({ VITE_APPCHECK_SITE_KEY: value })).toBeUndefined()
+  })
+
+  it('is used when the environment has a key', () => {
+    expect(shouldUseAppCheck({ VITE_APPCHECK_SITE_KEY: 'site-key' })).toBe(true)
+  })
+
+  it('is left off without a key, so local work and tests need no setup', () => {
+    expect(shouldUseAppCheck({})).toBe(false)
+  })
+
+  it('is never used with the emulators, which do not check it', () => {
+    expect(
+      shouldUseAppCheck({ VITE_APPCHECK_SITE_KEY: 'site-key', VITE_USE_EMULATORS: 'true' }),
+    ).toBe(false)
   })
 })

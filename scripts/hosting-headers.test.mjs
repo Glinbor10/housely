@@ -50,11 +50,20 @@ describe('hosting security headers', () => {
     expect(images).not.toContain('https:')
   })
 
-  it('allows the script of the Google sign-in and no other third party script', () => {
+  it('allows only the scripts of Google sign-in and reCAPTCHA (App Check), each on its own path', () => {
     expect([...(directives['script-src'] ?? [])].sort()).toEqual([
       "'self'",
       'https://apis.google.com',
+      'https://www.google.com/recaptcha/',
+      'https://www.gstatic.com/recaptcha/',
     ])
+  })
+
+  it('lets reCAPTCHA open its frame and nothing else third party besides Firebase auth', () => {
+    const frames = directives['frame-src'] ?? []
+    expect(frames).toEqual(expect.arrayContaining(["'self'", 'https://www.google.com/recaptcha/']))
+    expect(frames).not.toContain('*')
+    expect(frames).not.toContain('https:')
   })
 
   it('never allows inline or eval scripts', () => {
