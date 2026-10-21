@@ -12,6 +12,25 @@ export const en = {
   'common.somethingWentWrong': 'Something went wrong. Try again.',
   'common.language': 'Language',
 
+  // Sections
+  'tab.sections': 'Sections',
+  'tab.week': 'Week',
+  'tab.history': 'History',
+  'tab.people': 'People',
+  'tab.flat': 'Flat',
+
+  // History
+  'history.empty': 'Nothing to show yet.',
+  'history.byPerson': 'By person',
+  'history.byZone': 'By zone',
+  'history.weeks': 'Week by week',
+  'history.weekOf': 'Week {n} · from {date}',
+  'history.progress': '{done} of {assigned} done',
+  'history.missedCount': '{n} missed',
+  'history.missed': 'Missed',
+  'history.resting': 'Resting: {names}',
+  'history.showOlder': 'Show older weeks',
+
   // Welcome
   'welcome.tagline':
     'Share the chores of your flat: every week each person gets a zone and the rotation does the rest.',

@@ -14,6 +14,12 @@ export const PeopleIcon = (props: SvgIconProps) => (
   </SvgIcon>
 )
 
+export const HistoryIcon = (props: SvgIconProps) => (
+  <SvgIcon {...props}>
+    <path d="M13 3a9 9 0 00-9 9H1l3.9 3.9.1.1L9 12H6a7 7 0 117 7 7 7 0 01-4.9-2l-1.4 1.4A9 9 0 1013 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2V8H12z" />
+  </SvgIcon>
+)
+
 export const HomeIcon = (props: SvgIconProps) => (
   <SvgIcon {...props}>
     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z" />

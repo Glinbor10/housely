@@ -71,7 +71,10 @@ export const signInWithGoogleEmulator = async (
 }
 
 // The bottom navigation of the flat
-export const openTab = async (page: Page, name: 'Week' | 'People' | 'Flat'): Promise<void> => {
+export const openTab = async (
+  page: Page,
+  name: 'Week' | 'History' | 'People' | 'Flat',
+): Promise<void> => {
   await page
     .getByRole('navigation', { name: /sections/i })
     .getByRole('button', { name })

@@ -159,7 +159,7 @@ test('every section fits the phone: no horizontal scroll and no layout shift', a
   })
   await createFlat(page, uniqueName())
 
-  for (const tab of ['Week', 'People', 'Flat'] as const) {
+  for (const tab of ['Week', 'History', 'People', 'Flat'] as const) {
     await openTab(page, tab)
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
@@ -192,6 +192,8 @@ test('no screen has accessibility violations (axe, WCAG 2 A and AA)', async ({ p
 
   await createFlat(page, uniqueName())
   await check('week')
+  await openTab(page, 'History')
+  await check('history')
   await openTab(page, 'People')
   await check('people')
   await openTab(page, 'Flat')
@@ -201,4 +203,23 @@ test('no screen has accessibility violations (axe, WCAG 2 A and AA)', async ({ p
   await page.emulateMedia({ colorScheme: 'dark' })
   await openTab(page, 'Week')
   await check('week in dark mode')
+})
+
+test('the history shows what was done and counts it per person', async ({ page }) => {
+  await createFlat(page, uniqueName())
+  await page
+    .getByRole('button', { name: /mark as done/i })
+    .first()
+    .click()
+  await expect(page.getByText(/^Done \d{4}-\d{2}-\d{2}$/).first()).toBeVisible()
+
+  await openTab(page, 'History')
+  await expect(
+    page.getByRole('heading', { name: /^Week 1 · from \d{4}-\d{2}-\d{2}$/ }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('listitem', { name: 'Ana' }).getByText(/^1 of \d+ done$/),
+  ).toBeVisible()
+  // Nothing is missed in the very first week: it is still in progress
+  await expect(page.getByText('Missed')).toHaveCount(0)
 })
