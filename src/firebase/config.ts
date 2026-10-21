@@ -34,7 +34,7 @@ export const readFirebaseConfig = (env: Record<string, string | undefined>): Fir
 export const shouldUseEmulators = (env: Record<string, string | undefined>): boolean =>
   env.VITE_USE_EMULATORS === 'true'
 
-// The reCAPTCHA v3 site key of App Check. It is public by design (it ships in the page), and it is
+// The reCAPTCHA Enterprise site key of App Check. It is public by design (it ships in the page), and it is
 // per environment, so it is injected at build time like the rest of the web config.
 export const readAppCheckSiteKey = (env: Record<string, string | undefined>): string | undefined =>
   env.VITE_APPCHECK_SITE_KEY?.trim() || undefined

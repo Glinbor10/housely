@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import {
   browserLocalPersistence,
   connectAuthEmulator,
@@ -60,7 +60,7 @@ const startAppCheck = (app: FirebaseApp): void => {
   if (!shouldUseAppCheck(import.meta.env) || siteKey === undefined) return
   try {
     initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(siteKey),
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
       isTokenAutoRefreshEnabled: true,
     })
   } catch {

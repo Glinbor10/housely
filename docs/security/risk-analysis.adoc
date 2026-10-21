@@ -27,7 +27,7 @@ Use among flatmates falls under personal or household activity, which Article 2(
 | Content injection in the web app | CSP headers | Issue https://github.com/Glinbor10/housely/issues/17[#17]
 | Vulnerable dependencies | Dependabot, CodeQL, `npm audit` | Issue https://github.com/Glinbor10/housely/issues/15[#15]
 | Credential leak | GitHub Secrets, no secrets in the repo | Applied
-| Scripts using the project without the app (public web config, free anonymous identities) | App Check with reCAPTCHA v3, plus the rules: Google sign-in to create a flat, an invite code to join, caps per identity and per flat | Applied; enforcement is switched on in the Firebase console
+| Scripts using the project without the app (public web config, free anonymous identities) | App Check with reCAPTCHA Enterprise, plus the rules: Google sign-in to create a flat, an invite code to join, caps per identity and per flat | Applied; enforcement is switched on in the Firebase console
 | Data loss | Scheduled Firestore export | Needs the Blaze plan, see https://github.com/Glinbor10/housely/issues/20[#20]
 |===
 
@@ -35,11 +35,12 @@ Use among flatmates falls under personal or household activity, which Article 2(
 The app is meant for flatmates but is public, so it is protected in layers:
 
 . *Rules*: creating a flat requires an identity linked to Google; joining requires a valid invite code; there are caps per identity (3 flats) and per flat (20 people, 1040 weeks). An anonymous identity alone can neither read nor write any flat.
-. *App Check*: Firebase only answers requests that carry a token proving they come from this app in a real browser. Without it, a script that only knows the public web config (it ships in the page) is rejected. The reCAPTCHA v3 site key is injected per environment as `VITE_APPCHECK_SITE_KEY`; with no key (local work, tests, emulators) App Check is off.
+. *App Check*: Firebase only answers requests that carry a token proving they come from this app in a real browser. Without it, a script that only knows the public web config (it ships in the page) is rejected. The reCAPTCHA Enterprise site key is injected per environment as `VITE_APPCHECK_SITE_KEY`; it is free on the Spark plan up to 10,000 assessments a month (a token is refreshed about twice an hour per visitor); with no key (local work, tests, emulators) App Check is off.
 . *Quota watching*: the Spark plan cannot be billed, so the worst case is losing a day of service when the free daily quota runs out. Usage is reviewed in the Firebase console; if the app grows, moving to Blaze with a spending cap is the decision to take (it would also enable scheduled backups and budget alerts).
 
 === Enabling it in an environment
-. Create a reCAPTCHA v3 site key for the domains of the environment and register it in Firebase console > App Check > Apps > Web.
+. In the Google Cloud console (Security > Fraud Defense, project of the environment) enable the reCAPTCHA Enterprise API if asked and create a *score-based Web key* for the domain of the environment (for example `housely-ci.web.app`), with the checkbox challenge off and no `localhost`.
+. In Firebase console > App Check > Apps > Web, register the app with the *reCAPTCHA Enterprise* provider and that key.
 . Add the repository variable `VITE_APPCHECK_SITE_KEY` to the GitHub environment (`ci`, `production`) and deploy.
 . Watch the App Check metrics for Authentication and Firestore until the share of verified requests is nearly 100%.
 . Only then press *Enforce* for both services. Enforcing earlier would lock out installed copies of the app that have not updated yet.
