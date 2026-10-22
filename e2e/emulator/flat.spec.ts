@@ -198,6 +198,9 @@ test('no screen has accessibility violations (axe, WCAG 2 A and AA)', async ({ p
   await check('people')
   await openTab(page, 'Flat')
   await check('flat')
+  await page.getByRole('button', { name: /edit people and zones/i }).click()
+  await check('rotation editor')
+  await page.getByRole('button', { name: /^cancel$/i }).click()
 
   // The same screens with the dark palette, where contrast is easiest to get wrong
   await page.emulateMedia({ colorScheme: 'dark' })
@@ -222,4 +225,24 @@ test('the history shows what was done and counts it per person', async ({ page }
   ).toBeVisible()
   // Nothing is missed in the very first week: it is still in progress
   await expect(page.getByText('Missed')).toHaveCount(0)
+})
+
+test('the owner adds a person from the settings and the new person waits to join', async ({
+  page,
+}) => {
+  await createFlat(page, uniqueName())
+  await openTab(page, 'Flat')
+  await page.getByRole('button', { name: /edit people and zones/i }).click()
+  await expect(page.getByText(/this week stays as it is/i)).toBeVisible()
+  await page.getByRole('button', { name: /add person/i }).click()
+  await page.getByLabel('Person 3', { exact: true }).fill('Dani')
+  await page.getByRole('button', { name: /^save$/i }).click()
+
+  // The editor closes once the edit is stored, and the new person shows up in the People tab
+  await expect(page.getByRole('button', { name: /edit people and zones/i })).toBeVisible()
+  await openTab(page, 'People')
+  await expect(page.getByText(/waiting for dani to join/i)).toBeVisible()
+  // The week that is running was not touched
+  await openTab(page, 'Week')
+  await expect(page.getByText(/Ana \(you\)/).first()).toBeVisible()
 })

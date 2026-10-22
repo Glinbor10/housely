@@ -2,23 +2,27 @@ import { useState } from 'react'
 import { Alert, Box, Button, Skeleton, Stack, Typography } from '@mui/material'
 import { BottomTabs, type Tab } from '../components/BottomTabs'
 import { HistoryView } from '../components/HistoryView'
+import { RotationEditor } from '../components/RotationEditor'
 import { InviteCode } from '../components/InviteCode'
 import { MembersList } from '../components/MembersList'
 import { SaveAccessBanner } from '../components/SaveAccessBanner'
 import { ThisWeek } from '../components/ThisWeek'
 import { TricountLink } from '../components/TricountLink'
 import { findCompletion, toIsoDate, type Completion } from '../domain/completions'
-import { buildHistory, personStats, zoneStats } from '../domain/history'
-import { baseLayout } from '../domain/layouts'
+import { buildHistory, personStats, weekStartDate, zoneStats } from '../domain/history'
+import { baseLayout, layoutForWeek, type RotationLayout } from '../domain/layouts'
+import { planRotationEdit, type RotationEdit, type RotationPlan } from '../domain/rotationEdit'
 import { getAssignments, getRestingMembers, getWeekIndex } from '../domain/rotation'
 import { getFirebase } from '../firebase/app'
 import {
   forgetFlat,
   releaseMember,
   saveCompletion,
+  saveRotation,
   setTricountUrl,
   subscribeCompletions,
   subscribeFlat,
+  subscribeLayouts,
   subscribeMembers,
   type CompletionRecord,
   type FlatRecord,
@@ -54,6 +58,11 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
     (onValue, onError) => subscribeMembers(db, flatId, onValue, onError),
     [],
   )
+  const layouts = useSubscription<RotationLayout[]>(
+    flatId,
+    (onValue, onError) => subscribeLayouts(db, flatId, onValue, onError),
+    [],
+  )
   const completions = useSubscription<CompletionRecord[]>(
     flatId,
     (onValue, onError) => subscribeCompletions(db, flatId, onValue, onError),
@@ -64,12 +73,13 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
   const save = useAction()
   const tricount = useAction()
   const release = useAction()
+  const rotation = useAction()
   const linking = useAction()
   const [bannerDismissed, setBannerDismissed] = useState(() =>
     isSaveAccessDismissed(getBrowserStorage()),
   )
 
-  const failure = flat.error ?? members.error ?? completions.error
+  const failure = flat.error ?? members.error ?? completions.error ?? layouts.error
   const leave = (
     <Button variant="outlined" onClick={onLeave}>
       {t('flat.leave')}
@@ -97,7 +107,11 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
       </Alert>
       {leaveLostFlat}
     </Stack>
-  ) : !flat.ready || !members.ready || !completions.ready || flat.value === null ? (
+  ) : !flat.ready ||
+    !members.ready ||
+    !completions.ready ||
+    !layouts.ready ||
+    flat.value === null ? (
     <Stack spacing={2} aria-busy="true" aria-label={t('common.loading')} role="status">
       <Skeleton variant="text" width="60%" height={48} />
       <Skeleton variant="rounded" height={116} />
@@ -126,6 +140,7 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
         flat={flat.value}
         members={members.value}
         completions={completions.value}
+        layouts={layouts.value}
         session={session}
         isOwner={flat.value.ownerUid === uid}
         now={now}
@@ -134,6 +149,9 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
         tricountError={tricount.error}
         releaseBusy={release.busy}
         releaseError={release.error}
+        rotationBusy={rotation.busy}
+        rotationError={rotation.error}
+        onSaveRotation={(plan) => rotation.run(() => saveRotation(db, flatId, plan))}
         onSaveTricount={(url) => tricount.run(() => setTricountUrl(db, flatId, url))}
         onSave={(record) => save.run(() => saveCompletion(db, flatId, record))}
         onRelease={(memberId) => {
@@ -152,6 +170,7 @@ interface FlatContentProps {
   flat: FlatRecord
   members: MemberRecord[]
   completions: CompletionRecord[]
+  layouts: RotationLayout[]
   session: Session
   isOwner: boolean
   now: Date
@@ -160,6 +179,9 @@ interface FlatContentProps {
   tricountError: string | null
   releaseBusy: boolean
   releaseError: string | null
+  rotationBusy: boolean
+  rotationError: string | null
+  onSaveRotation: (plan: RotationPlan) => Promise<boolean>
   onSaveTricount: (url: string | null) => void
   onSave: (record: CompletionRecord) => Promise<boolean>
   onRelease: (memberId: string) => void
@@ -170,6 +192,7 @@ const FlatContent = ({
   flat,
   members,
   completions,
+  layouts,
   session,
   isOwner,
   now,
@@ -178,6 +201,9 @@ const FlatContent = ({
   tricountError,
   releaseBusy,
   releaseError,
+  rotationBusy,
+  rotationError,
+  onSaveRotation,
   onSaveTricount,
   onSave,
   onRelease,
@@ -185,18 +211,21 @@ const FlatContent = ({
 }: FlatContentProps) => {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('week')
+  const [editing, setEditing] = useState(false)
+  const [problems, setProblems] = useState<string[]>([])
   const names = new Map(members.map((member) => [member.id, member.name]))
   const weekIndex = getWeekIndex(new Date(`${flat.startDate}T00:00:00`), now)
-  const assignments = getAssignments(
-    members.filter((member) => member.active),
-    flat.zones,
-    weekIndex,
-  ).map(({ zone, member }) => ({ zone, member: member.name }))
-  const resting = getRestingMembers(
-    members.filter((member) => member.active),
-    flat.zones,
-    weekIndex,
-  ).map((member) => member.name)
+  // A flat that never edited its rotation has a single implicit layout: its people and zones
+  const effective = layouts.length > 0 ? layouts : [baseLayout(members, flat.zones)]
+  // Each week is read with the layout that was in force then
+  const layout = layoutForWeek(effective, weekIndex)
+  const assignments = (layout ? getAssignments(layout.members, layout.zones, weekIndex) : []).map(
+    ({ zone, member }) => ({ zone, member: names.get(member) ?? '?' }),
+  )
+  const resting =
+    layout && layout.members.length > 0
+      ? getRestingMembers(layout.members, layout.zones, weekIndex).map((id) => names.get(id) ?? '?')
+      : []
   const done: Completion[] = completions.map((record) => ({
     weekIndex: record.weekIndex,
     zone: record.zone,
@@ -204,13 +233,31 @@ const FlatContent = ({
     doneAt: record.doneAt,
   }))
 
-  // Until the rotation can be edited every flat has a single layout: its current people and zones
   const history = buildHistory({
-    layouts: [baseLayout(members, flat.zones)],
+    layouts: effective,
     completions,
     currentWeek: weekIndex,
     startDate: flat.startDate,
   })
+
+  // The people of the latest layout (the one that applies from next week, if there is one) and the
+  // zones: what the owner starts from when editing
+  const latest = [...effective].sort((a, b) => a.fromWeek - b.fromWeek).at(-1)
+  const submitRotation = async (edit: RotationEdit) => {
+    const result = planRotationEdit({
+      members,
+      zones: flat.zones,
+      storedLayouts: layouts,
+      edit,
+      currentWeek: weekIndex,
+    })
+    if (!result.ok) {
+      setProblems(result.errors)
+      return
+    }
+    setProblems([])
+    if (await onSaveRotation(result.plan)) setEditing(false)
+  }
 
   // Marking the last pending zone is what makes the week clean
   const finishesWeek = (zone: string): boolean => {
@@ -273,11 +320,13 @@ const FlatContent = ({
         ) : tab === 'people' ? (
           <>
             <MembersList
-              members={members.map((member) => ({
-                id: member.id,
-                name: member.name,
-                claimed: member.uid !== null,
-              }))}
+              members={members
+                .filter((member) => member.active)
+                .map((member) => ({
+                  id: member.id,
+                  name: member.name,
+                  claimed: member.uid !== null,
+                }))}
               currentMemberId={session.memberId}
               canManage={isOwner}
               busy={releaseBusy}
@@ -286,6 +335,21 @@ const FlatContent = ({
             />
             <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
           </>
+        ) : isOwner && editing ? (
+          <RotationEditor
+            people={(latest?.members ?? []).map((id) => ({ id, name: names.get(id) ?? '?' }))}
+            zones={flat.zones}
+            canAddPeople={members.length < 20}
+            appliesFrom={weekStartDate(flat.startDate, weekIndex + 1)}
+            problems={problems}
+            busy={rotationBusy}
+            error={rotationError}
+            onSave={submitRotation}
+            onCancel={() => {
+              setProblems([])
+              setEditing(false)
+            }}
+          />
         ) : (
           <>
             <TricountLink
@@ -295,6 +359,11 @@ const FlatContent = ({
               error={tricountError}
               onSave={onSaveTricount}
             />
+            {isOwner ? (
+              <Button variant="outlined" onClick={() => setEditing(true)}>
+                {t('rotation.edit')}
+              </Button>
+            ) : null}
             {leave}
           </>
         )}

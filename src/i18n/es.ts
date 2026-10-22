@@ -156,6 +156,14 @@ export const es: Record<keyof typeof en, string> = {
     '{name} perderá el acceso en su móvil actual y podrá volver a unirse con el código de invitación. Lo que ya limpió se conserva.',
   'people.confirmYes': 'Sí, liberar',
 
+  // Editing the rotation
+  'rotation.edit': 'Editar personas y zonas',
+  'rotation.title': 'Editar personas y zonas',
+  'rotation.appliesFrom':
+    'El cambio se aplica desde el {date}, la semana que viene. Esta semana se queda como está, y también todas las semanas ya vividas.',
+  'rotation.limitReached':
+    'Este piso ha llegado al límite de 20 personas añadidas en total, así que no se puede añadir a nadie más.',
+
   // Tricount
   'tricount.open': 'Abrir Tricount',
   'tricount.notYet': 'Quien creó el piso aún no ha añadido el enlace de Tricount.',
