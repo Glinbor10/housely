@@ -1,14 +1,14 @@
 import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material'
 import { useTranslation } from '../i18n/useTranslation'
-import { HistoryIcon, HomeIcon, PeopleIcon, SparkleIcon } from './icons'
+import { HistoryIcon, HomeIcon, SettingsIcon, SparkleIcon } from './icons'
 
-export type Tab = 'week' | 'history' | 'people' | 'flat'
+export type Tab = 'week' | 'history' | 'flat' | 'settings'
 
 const TABS: Array<{ value: Tab; icon: React.ReactElement }> = [
   { value: 'week', icon: <SparkleIcon /> },
   { value: 'history', icon: <HistoryIcon /> },
-  { value: 'people', icon: <PeopleIcon /> },
   { value: 'flat', icon: <HomeIcon /> },
+  { value: 'settings', icon: <SettingsIcon /> },
 ]
 
 interface BottomTabsProps {

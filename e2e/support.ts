@@ -73,7 +73,7 @@ export const signInWithGoogleEmulator = async (
 // The bottom navigation of the flat
 export const openTab = async (
   page: Page,
-  name: 'Week' | 'History' | 'People' | 'Flat',
+  name: 'Week' | 'History' | 'My flat' | 'Settings',
 ): Promise<void> => {
   await page
     .getByRole('navigation', { name: /sections/i })
@@ -101,8 +101,8 @@ export const createFlat = async (
   await page.getByLabel('Person 2', { exact: true }).fill('Ben')
   await page.getByRole('button', { name: /^next$/i }).click()
   await page.getByRole('button', { name: /create flat/i }).click()
-  // The invite code lives in the People tab; the person comes back to this week afterwards
-  await openTab(page, 'People')
+  // The invite code lives in My flat; the person comes back to this week afterwards
+  await openTab(page, 'My flat')
   await page.getByText(/invite code/i).waitFor()
   const code = ((await page.locator('strong').first().textContent()) ?? '').trim()
   await openTab(page, 'Week')

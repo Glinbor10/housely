@@ -63,7 +63,7 @@ await page
   .waitFor()
 await shot(page, 'this-week')
 
-await openTab(page, 'People')
+await openTab(page, 'My flat')
 await shot(page, 'people')
 await openTab(page, 'Week')
 

@@ -98,12 +98,10 @@ describe('App', () => {
       timeout: 15000,
     })
 
-    // The invite code lives in the People tab
-    await userEvent.click(screen.getByRole('button', { name: /^people$/i }))
+    // The invite code lives in My flat
+    await userEvent.click(screen.getByRole('button', { name: /^my flat$/i }))
     expect(screen.getByText(/invite code/i)).toBeTruthy()
 
-    // And the Tricount link in the Flat tab
-    await userEvent.click(screen.getByRole('button', { name: /^flat$/i }))
     await userEvent.click(screen.getByRole('button', { name: /add tricount link/i }))
     await userEvent.type(screen.getByLabelText('Tricount link'), 'https://tricount.com/tINTEG')
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
@@ -120,10 +118,14 @@ describe('App', () => {
     expect(
       await screen.findByRole('button', { name: /edit people and zones/i }, { timeout: 15000 }),
     ).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: /^people$/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^my flat$/i }))
     expect(
       await screen.findByText(/waiting for dani to join/i, {}, { timeout: 15000 }),
     ).toBeTruthy()
+
+    // The settings show the Google account that created the flat
+    await userEvent.click(screen.getByRole('button', { name: /^settings$/i }))
+    expect(await screen.findByText(/signed in with google as ana@example.com/i)).toBeTruthy()
   }, 90000)
 
   it('opens the same flat again on the next visit', async () => {

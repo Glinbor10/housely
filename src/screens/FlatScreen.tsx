@@ -3,6 +3,7 @@ import { Alert, Box, Button, Skeleton, Stack, Typography } from '@mui/material'
 import { BottomTabs, type Tab } from '../components/BottomTabs'
 import { HistoryView } from '../components/HistoryView'
 import { RotationEditor } from '../components/RotationEditor'
+import { SettingsView } from '../components/SettingsView'
 import { InviteCode } from '../components/InviteCode'
 import { MembersList } from '../components/MembersList'
 import { SaveAccessBanner } from '../components/SaveAccessBanner'
@@ -36,15 +37,20 @@ import { dismissSaveAccess, isSaveAccessDismissed } from '../storage/preferences
 import { getBrowserStorage, type Session } from '../storage/session'
 import { useTranslation } from '../i18n/useTranslation'
 
+// Shown in the settings. The release workflow injects the real one; a local build has none.
+const APP_VERSION: string = import.meta.env.VITE_APP_VERSION ?? '0.0.0-dev'
+
 interface FlatScreenProps {
   uid: string
   // True when the identity has Google linked; flatmates who joined anonymously are invited to link it
   isGoogle: boolean
+  // Email of the linked Google account, when there is one
+  accountEmail: string | null
   session: Session
   onLeave: () => void
 }
 
-export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps) => {
+export const FlatScreen = ({ uid, isGoogle, accountEmail, session, onLeave }: FlatScreenProps) => {
   const { t } = useTranslation()
   const { db } = getFirebase()
   const { flatId } = session
@@ -80,11 +86,12 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
   )
 
   const failure = flat.error ?? members.error ?? completions.error ?? layouts.error
-  const leave = (
-    <Button variant="outlined" onClick={onLeave}>
-      {t('flat.leave')}
-    </Button>
-  )
+  // Only link: switching to another account would lose access to this flat
+  const linkGoogle = () =>
+    linking.run(async () => {
+      await openGoogle(getFirebase().auth, undefined, { allowSwitch: false })
+    })
+
   // Access was lost (for example, the owner released this identity): the entry that points to the
   // flat is stale, so it is forgotten together with the local session.
   const leaveLostFlat = (
@@ -124,12 +131,7 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
         <SaveAccessBanner
           busy={linking.busy}
           error={linking.error}
-          onSave={() =>
-            linking.run(async () => {
-              // Only link: switching to another account would lose access to this flat
-              await openGoogle(getFirebase().auth, undefined, { allowSwitch: false })
-            })
-          }
+          onSave={linkGoogle}
           onDismiss={() => {
             dismissSaveAccess(getBrowserStorage())
             setBannerDismissed(true)
@@ -160,7 +162,12 @@ export const FlatScreen = ({ uid, isGoogle, session, onLeave }: FlatScreenProps)
             ? release.run(() => releaseMember(db, { flatId, memberId, uid: member.uid as string }))
             : undefined
         }}
-        leave={leave}
+        isGoogle={isGoogle}
+        accountEmail={accountEmail}
+        linkBusy={linking.busy}
+        linkError={linking.error}
+        onLinkGoogle={linkGoogle}
+        onLeave={onLeave}
       />
     </Stack>
   )
@@ -185,7 +192,12 @@ interface FlatContentProps {
   onSaveTricount: (url: string | null) => void
   onSave: (record: CompletionRecord) => Promise<boolean>
   onRelease: (memberId: string) => void
-  leave: React.ReactNode
+  isGoogle: boolean
+  accountEmail: string | null
+  linkBusy: boolean
+  linkError: string | null
+  onLinkGoogle: () => void
+  onLeave: () => void
 }
 
 const FlatContent = ({
@@ -207,7 +219,12 @@ const FlatContent = ({
   onSaveTricount,
   onSave,
   onRelease,
-  leave,
+  isGoogle,
+  accountEmail,
+  linkBusy,
+  linkError,
+  onLinkGoogle,
+  onLeave,
 }: FlatContentProps) => {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('week')
@@ -317,24 +334,16 @@ const FlatContent = ({
             people={personStats(history, weekIndex)}
             zones={zoneStats(history, weekIndex)}
           />
-        ) : tab === 'people' ? (
-          <>
-            <MembersList
-              members={members
-                .filter((member) => member.active)
-                .map((member) => ({
-                  id: member.id,
-                  name: member.name,
-                  claimed: member.uid !== null,
-                }))}
-              currentMemberId={session.memberId}
-              canManage={isOwner}
-              busy={releaseBusy}
-              error={releaseError}
-              onRelease={onRelease}
-            />
-            <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
-          </>
+        ) : tab === 'settings' ? (
+          <SettingsView
+            isGoogle={isGoogle}
+            accountEmail={accountEmail}
+            linkBusy={linkBusy}
+            linkError={linkError}
+            version={APP_VERSION}
+            onLinkGoogle={onLinkGoogle}
+            onLeave={onLeave}
+          />
         ) : isOwner && editing ? (
           <RotationEditor
             people={(latest?.members ?? []).map((id) => ({ id, name: names.get(id) ?? '?' }))}
@@ -359,12 +368,26 @@ const FlatContent = ({
               error={tricountError}
               onSave={onSaveTricount}
             />
+            <MembersList
+              members={members
+                .filter((member) => member.active)
+                .map((member) => ({
+                  id: member.id,
+                  name: member.name,
+                  claimed: member.uid !== null,
+                }))}
+              currentMemberId={session.memberId}
+              canManage={isOwner}
+              busy={releaseBusy}
+              error={releaseError}
+              onRelease={onRelease}
+            />
+            <InviteCode code={flat.inviteCode} appUrl={window.location.origin} />
             {isOwner ? (
               <Button variant="outlined" onClick={() => setEditing(true)}>
                 {t('rotation.edit')}
               </Button>
             ) : null}
-            {leave}
           </>
         )}
       </Stack>

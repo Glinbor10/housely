@@ -1,7 +1,18 @@
 import { useState } from 'react'
-import { Alert, Button, Stack, TextField, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActionArea,
+  CardContent,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { parseTricountUrl } from '../domain/tricount'
 import { useTranslation } from '../i18n/useTranslation'
+import { ReceiptIcon } from './icons'
 
 interface TricountLinkProps {
   url: string | undefined
@@ -28,25 +39,57 @@ export const TricountLink = ({ url, canEdit, busy, error, onSave }: TricountLink
     }
   }
 
+  const shortcut = (hint: string) => (
+    <CardContent>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <ReceiptIcon color="primary" sx={{ fontSize: 40 }} />
+        <Box>
+          <Typography variant="h6" component="span" sx={{ display: 'block' }}>
+            Tricount
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {hint}
+          </Typography>
+        </Box>
+      </Stack>
+    </CardContent>
+  )
+
   return (
     <Stack spacing={1}>
       {url ? (
-        <Button
-          variant="outlined"
+        <Card
           component="a"
           href={url}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={t('tricount.open')}
+          sx={{
+            display: 'block',
+            textDecoration: 'none',
+            color: 'inherit',
+            border: 1,
+            borderColor: 'primary.main',
+          }}
         >
-          {t('tricount.open')}
-        </Button>
+          {shortcut(t('tricount.openHint'))}
+        </Card>
+      ) : canEdit ? (
+        // No link yet: the shortcut is faded and invites the owner to add it
+        <Card variant="outlined" sx={{ opacity: 0.5, borderStyle: 'dashed' }}>
+          <CardActionArea aria-label={t('tricount.add')} onClick={() => setEditing(true)}>
+            {shortcut(t('tricount.addHint'))}
+          </CardActionArea>
+        </Card>
       ) : (
-        <Typography color="text.secondary">{t('tricount.notYet')}</Typography>
+        <Card variant="outlined" sx={{ opacity: 0.5, borderStyle: 'dashed' }}>
+          {shortcut(t('tricount.notYet'))}
+        </Card>
       )}
 
-      {canEdit && !editing ? (
+      {canEdit && !editing && url ? (
         <Button size="small" onClick={() => setEditing(true)}>
-          {url ? t('tricount.edit') : t('tricount.add')}
+          {t('tricount.edit')}
         </Button>
       ) : null}
 

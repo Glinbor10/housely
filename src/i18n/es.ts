@@ -17,7 +17,20 @@ export const es: Record<keyof typeof en, string> = {
   'tab.week': 'Semana',
   'tab.history': 'Historial',
   'tab.people': 'Personas',
-  'tab.flat': 'Piso',
+  'tab.flat': 'Mi piso',
+  'tab.settings': 'Ajustes',
+
+  // Settings
+  'settings.appearance': 'Apariencia',
+  'settings.theme.light': 'Claro',
+  'settings.theme.dark': 'Oscuro',
+  'settings.theme.system': 'Auto',
+  'settings.account': 'Cuenta',
+  'settings.linked': 'Has iniciado sesión con Google.',
+  'settings.linkedAs': 'Has iniciado sesión con Google como {email}.',
+  'settings.notLinked':
+    'Sin vincular con Google. Si pierdes este móvil necesitarás el código de invitación para volver a entrar.',
+  'settings.version': 'Housely v{version}',
 
   // History
   'history.empty': 'Todavía no hay nada que mostrar.',
@@ -166,6 +179,8 @@ export const es: Record<keyof typeof en, string> = {
 
   // Tricount
   'tricount.open': 'Abrir Tricount',
+  'tricount.openHint': 'Los gastos compartidos del piso',
+  'tricount.addHint': 'Toca para añadir el enlace de vuestro Tricount',
   'tricount.notYet': 'Quien creó el piso aún no ha añadido el enlace de Tricount.',
   'tricount.edit': 'Editar enlace de Tricount',
   'tricount.add': 'Añadir enlace de Tricount',

@@ -17,7 +17,20 @@ export const en = {
   'tab.week': 'Week',
   'tab.history': 'History',
   'tab.people': 'People',
-  'tab.flat': 'Flat',
+  'tab.flat': 'My flat',
+  'tab.settings': 'Settings',
+
+  // Settings
+  'settings.appearance': 'Appearance',
+  'settings.theme.light': 'Light',
+  'settings.theme.dark': 'Dark',
+  'settings.theme.system': 'Auto',
+  'settings.account': 'Account',
+  'settings.linked': 'Signed in with Google.',
+  'settings.linkedAs': 'Signed in with Google as {email}.',
+  'settings.notLinked':
+    'Not linked to Google. If you lose this phone you will need the invite code to get back in.',
+  'settings.version': 'Housely v{version}',
 
   // History
   'history.empty': 'Nothing to show yet.',
@@ -161,6 +174,8 @@ export const en = {
 
   // Tricount
   'tricount.open': 'Open Tricount',
+  'tricount.openHint': 'The shared expenses of the flat',
+  'tricount.addHint': 'Tap to add the link of your Tricount',
   'tricount.notYet': 'The owner has not added the Tricount link yet.',
   'tricount.edit': 'Edit Tricount link',
   'tricount.add': 'Add Tricount link',

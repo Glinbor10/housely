@@ -31,7 +31,7 @@ test('creating a flat is gated by Google, and closing the Google window is not a
 
 test('with Google already linked the gate is skipped the next time', async ({ page }) => {
   await createFlat(page, uniqueName())
-  await openTab(page, 'Flat')
+  await openTab(page, 'Settings')
   await page.getByRole('button', { name: /leave this flat on this device/i }).click()
   await page.getByRole('button', { name: /create a flat/i }).click()
   await expect(page.getByLabel('Flat name')).toBeVisible()
@@ -58,7 +58,7 @@ test('the owner finds the flat again from a new phone with Google', async ({
   await expect(second.getByText(/^week \d+$/i)).toBeVisible()
   await expect(second.getByText(/Ana \(you\)/).first()).toBeVisible()
   // It is the owner: they can manage the people and the Tricount link
-  await openTab(second, 'Flat')
+  await openTab(second, 'My flat')
   await expect(second.getByRole('button', { name: /add tricount link/i })).toBeVisible()
   await newPhone.close()
 })
@@ -109,7 +109,7 @@ test('a flatmate saves their access with Google and finds the flat from a new ph
   await fresh.getByRole('button', { name }).click()
   await expect(fresh.getByText(/Ben \(you\)/).first()).toBeVisible()
   // A flatmate is not the owner
-  await openTab(fresh, 'Flat')
+  await openTab(fresh, 'My flat')
   await expect(fresh.getByRole('button', { name: /add tricount link/i })).toHaveCount(0)
 
   await first.close()

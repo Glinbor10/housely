@@ -53,7 +53,7 @@ test('a flat is created, remembered, joined from a second phone and kept in sync
 
 test('the owner adds the Tricount link and flatmates can open it', async ({ page }) => {
   await createFlat(page, uniqueName())
-  await openTab(page, 'Flat')
+  await openTab(page, 'My flat')
   await page.getByRole('button', { name: /add tricount link/i }).click()
   await page.getByLabel('Tricount link').fill('http://tricount.com/abc')
   await page.getByRole('button', { name: /^save$/i }).click()
@@ -122,7 +122,7 @@ test('the owner releases a flatmate who lost their phone, and they rejoin from a
   }
 
   const oldPhone = await join()
-  await openTab(page, 'People')
+  await openTab(page, 'My flat')
   await expect(page.getByRole('button', { name: /release ben/i })).toBeVisible()
   // The owner can never release themselves
   await expect(page.getByRole('button', { name: /release ana/i })).toHaveCount(0)
@@ -159,7 +159,7 @@ test('every section fits the phone: no horizontal scroll and no layout shift', a
   })
   await createFlat(page, uniqueName())
 
-  for (const tab of ['Week', 'History', 'People', 'Flat'] as const) {
+  for (const tab of ['Week', 'History', 'My flat', 'Settings'] as const) {
     await openTab(page, tab)
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
@@ -194,13 +194,13 @@ test('no screen has accessibility violations (axe, WCAG 2 A and AA)', async ({ p
   await check('week')
   await openTab(page, 'History')
   await check('history')
-  await openTab(page, 'People')
-  await check('people')
-  await openTab(page, 'Flat')
-  await check('flat')
+  await openTab(page, 'My flat')
+  await check('my flat')
   await page.getByRole('button', { name: /edit people and zones/i }).click()
   await check('rotation editor')
   await page.getByRole('button', { name: /^cancel$/i }).click()
+  await openTab(page, 'Settings')
+  await check('settings')
 
   // The same screens with the dark palette, where contrast is easiest to get wrong
   await page.emulateMedia({ colorScheme: 'dark' })
@@ -231,7 +231,7 @@ test('the owner adds a person from the settings and the new person waits to join
   page,
 }) => {
   await createFlat(page, uniqueName())
-  await openTab(page, 'Flat')
+  await openTab(page, 'My flat')
   await page.getByRole('button', { name: /edit people and zones/i }).click()
   await expect(page.getByText(/this week stays as it is/i)).toBeVisible()
   await page.getByRole('button', { name: /add person/i }).click()
@@ -240,7 +240,7 @@ test('the owner adds a person from the settings and the new person waits to join
 
   // The editor closes once the edit is stored, and the new person shows up in the People tab
   await expect(page.getByRole('button', { name: /edit people and zones/i })).toBeVisible()
-  await openTab(page, 'People')
+  await openTab(page, 'My flat')
   await expect(page.getByText(/waiting for dani to join/i)).toBeVisible()
   // The week that is running was not touched
   await openTab(page, 'Week')

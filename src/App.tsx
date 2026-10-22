@@ -35,6 +35,7 @@ const Home = ({ uid }: { uid: string }) => {
     <FlatScreen
       uid={user.uid}
       isGoogle={isGoogleUser(user)}
+      accountEmail={user.email ?? null}
       session={session}
       onLeave={() => {
         clearSession(getBrowserStorage())
@@ -47,9 +48,12 @@ const Home = ({ uid }: { uid: string }) => {
 
   return (
     <Stack spacing={2}>
-      <Box sx={{ alignSelf: 'flex-end' }}>
-        <LanguageSwitch />
-      </Box>
+      {/* Once a flat is open the language lives in its settings */}
+      {session ? null : (
+        <Box sx={{ alignSelf: 'flex-end' }}>
+          <LanguageSwitch />
+        </Box>
+      )}
       {showHint ? (
         <InstallHint
           onDismiss={() => {

@@ -28,6 +28,22 @@ describe('TricountLink', () => {
     expect(link.getAttribute('rel')).toContain('noopener')
   })
 
+  it('shows the shortcut faded while there is no link, and inviting the owner to add it', async () => {
+    renderLink({ canEdit: true })
+    const card = screen.getByRole('button', { name: /add tricount link/i })
+    expect(screen.getByText(/tap to add the link/i)).toBeTruthy()
+    expect(Number(getComputedStyle(card.closest('.MuiCard-root') as Element).opacity)).toBeLessThan(
+      1,
+    )
+  })
+
+  it('shows the shortcut at full strength when there is a link', () => {
+    renderLink({ url: 'https://tricount.com/tABC' })
+    const card = screen.getByRole('link', { name: /open tricount/i })
+    expect(Number(getComputedStyle(card).opacity || 1)).toBe(1)
+    expect(screen.getByText('Tricount')).toBeTruthy()
+  })
+
   it('tells flatmates when the owner has not added the link yet', () => {
     renderLink()
     expect(screen.getByText(/has not added the tricount link/i)).toBeTruthy()
