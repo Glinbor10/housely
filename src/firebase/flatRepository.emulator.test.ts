@@ -7,6 +7,8 @@ import {
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { FlatDraft } from '../domain/flat'
+import type { RotationLayout } from '../domain/layouts'
+import { planRotationEdit } from '../domain/rotationEdit'
 import rules from '../../firebase/firestore/firestore.rules?raw'
 import {
   createFlat,
@@ -19,9 +21,11 @@ import {
   listMembers,
   releaseMember,
   saveCompletion,
+  saveRotation,
   setTricountUrl,
   subscribeCompletions,
   subscribeFlat,
+  subscribeLayouts,
   subscribeMembers,
   type CompletionRecord,
   type FlatRecord,
@@ -390,5 +394,98 @@ describe('setTricountUrl', () => {
     const { flatId } = await create()
     await assertFails(setTricountUrl(db(STRANGER), flatId, 'https://tricount.com/abc'))
     await assertFails(setTricountUrl(db(OWNER), flatId, 'http://tricount.com/abc'))
+  })
+})
+
+describe('saveRotation', () => {
+  // Edits the rotation of a flat created with Ana, Ben and Carl: Dani joins and Ben leaves
+  const edit = async (flatId: string, currentWeek = 2) => {
+    const members = await listMembers(db(OWNER), flatId)
+    const people = members
+      .filter((member) => member.name !== 'Ben')
+      .map(({ id, name }) => ({ id, name }))
+    const result = planRotationEdit({
+      members,
+      zones: draft.zones,
+      storedLayouts: [],
+      currentWeek,
+      edit: { people: [...people, { name: 'Dani' }], zones: ['Kitchen', 'Garden'] },
+    })
+    if (!result.ok) throw new Error(result.errors.join(', '))
+    return result.plan
+  }
+
+  it('stores the flat as it was and the new layout, adds and deactivates people, and updates the zones', async () => {
+    const { flatId } = await create()
+    await assertSucceeds(saveRotation(db(OWNER), flatId, await edit(flatId)))
+
+    const layouts = await waitFor<RotationLayout[]>(
+      (callback) => subscribeLayouts(db(OWNER), flatId, callback, () => {}),
+      (values) => values.length === 2,
+    )
+    expect(layouts.map((layout) => layout.fromWeek)).toEqual([0, 3])
+    expect(layouts[0].zones).toEqual(draft.zones)
+    expect(layouts[1].zones).toEqual(['Kitchen', 'Garden'])
+
+    const members = await listMembers(db(OWNER), flatId)
+    expect(members.find((member) => member.name === 'Dani')).toMatchObject({
+      id: 'm3',
+      active: true,
+      uid: null,
+    })
+    expect(members.find((member) => member.name === 'Ben')).toMatchObject({ active: false })
+
+    const flat = await waitFor<FlatRecord | null>(
+      (callback) => subscribeFlat(db(OWNER), flatId, callback, () => {}),
+      (value) => value !== null,
+    )
+    expect(flat?.zones).toEqual(['Kitchen', 'Garden'])
+    expect(flat?.previousZones).toEqual(draft.zones)
+  })
+
+  it('writes everything or nothing: a rejected layout leaves people and zones as they were', async () => {
+    const { flatId } = await create()
+    const plan = await edit(flatId)
+    // A week beyond the limit makes the rules reject the layout, and with it the whole batch
+    const broken = {
+      ...plan,
+      layouts: plan.layouts.map((layout) => ({ ...layout, fromWeek: 5000 })),
+    }
+    await assertFails(saveRotation(db(OWNER), flatId, broken))
+
+    const members = await listMembers(db(OWNER), flatId)
+    expect(members).toHaveLength(3)
+    expect(members.every((member) => member.active)).toBe(true)
+  })
+
+  it('is not allowed to a flatmate', async () => {
+    const { flatId } = await create()
+    const ben = (await listMembers(db(OWNER), flatId)).find((member) => member.name === 'Ben')!
+    await joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE, flatName: draft.name })
+    await assertFails(saveRotation(db(FLATMATE), flatId, await edit(flatId)))
+  })
+
+  it('lets the owner edit a flatmate who already joined', async () => {
+    const { flatId } = await create()
+    const ben = (await listMembers(db(OWNER), flatId)).find((member) => member.name === 'Ben')!
+    await joinFlat(db(FLATMATE), { flatId, memberId: ben.id, uid: FLATMATE, flatName: draft.name })
+    const members = await listMembers(db(OWNER), flatId)
+    const result = planRotationEdit({
+      members,
+      zones: draft.zones,
+      storedLayouts: [],
+      currentWeek: 0,
+      edit: {
+        people: members.map(({ id, name }) => ({ id, name: id === ben.id ? 'Benjamin' : name })),
+        zones: draft.zones,
+      },
+    })
+    if (!result.ok) throw new Error(result.errors.join(', '))
+    await assertSucceeds(saveRotation(db(OWNER), flatId, result.plan))
+    const after = await listMembers(db(OWNER), flatId)
+    expect(after.find((member) => member.id === ben.id)).toMatchObject({
+      name: 'Benjamin',
+      uid: FLATMATE,
+    })
   })
 })

@@ -151,6 +151,14 @@ export const en = {
     '{name} will lose access on their current phone and can rejoin with the invite code. What they already cleaned is kept.',
   'people.confirmYes': 'Yes, release',
 
+  // Editing the rotation
+  'rotation.edit': 'Edit people and zones',
+  'rotation.title': 'Edit people and zones',
+  'rotation.appliesFrom':
+    'The change applies from {date}, next week. This week stays as it is, and so does every week already lived.',
+  'rotation.limitReached':
+    'This flat has reached the limit of 20 people ever added, so nobody else can be added.',
+
   // Tricount
   'tricount.open': 'Open Tricount',
   'tricount.notYet': 'The owner has not added the Tricount link yet.',

@@ -12,7 +12,8 @@ export interface FlatDraft {
 const MAX_FLAT_NAME = 60
 const MAX_MEMBER_NAME = 40
 const MAX_ZONE_NAME = 60
-const MAX_ITEMS = 20
+// People and zones per flat. Every person ever added keeps an id (m0 to m19), so it caps the people too.
+export const MAX_ITEMS = 20
 // Flats one identity (in practice, one browser profile) can create; the rules enforce the same cap
 export const MAX_FLATS_PER_IDENTITY = 3
 
@@ -20,7 +21,7 @@ export const MAX_FLATS_PER_IDENTITY = 3
 const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const INVITE_CODE_LENGTH = 6
 
-const cleanText = (value: string): string => value.trim().replace(/\s+/g, ' ')
+export const cleanText = (value: string): string => value.trim().replace(/\s+/g, ' ')
 
 export const normalizeDraft = (draft: FlatDraft): FlatDraft => ({
   ...draft,

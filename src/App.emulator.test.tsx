@@ -109,6 +109,21 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
     const link = await screen.findByRole('link', { name: /open tricount/i }, { timeout: 15000 })
     expect(link.getAttribute('href')).toBe('https://tricount.com/tINTEG')
+
+    // The owner adds a person: it applies from next week, and the new person waits to join
+    await userEvent.click(screen.getByRole('button', { name: /edit people and zones/i }))
+    expect(screen.getByText(/this week stays as it is/i)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: /add person/i }))
+    await userEvent.type(screen.getByLabelText('Person 3'), 'Dani')
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    // The editor closes when the edit is stored
+    expect(
+      await screen.findByRole('button', { name: /edit people and zones/i }, { timeout: 15000 }),
+    ).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: /^people$/i }))
+    expect(
+      await screen.findByText(/waiting for dani to join/i, {}, { timeout: 15000 }),
+    ).toBeTruthy()
   }, 90000)
 
   it('opens the same flat again on the next visit', async () => {
