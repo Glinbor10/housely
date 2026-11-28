@@ -1,0 +1,29 @@
+= ASI: Use cases
+:toc:
+:lang: en
+
+== Actors
+* *Home owner:* the person who created the home, or the member the home was handed over to. Always has a Google account linked.
+* *Flatmate:* member who joins with the code. May link Google later.
+
+== UC-01 Create a home (FR-01, FR-02). The creator signs in with Google.. The creator enters the home name and start date, then the people (marking themselves) and their color, then the zones.. The system saves the home, generates an invite code and sets it as the default home.
+*Alternative:* if a required field is missing, the system reports it and does not save. An identity that already owns three homes cannot create another.
+
+== UC-02 Join a home (FR-03). The flatmate enters the code.. The system shows the home's members that are not yet claimed.. The flatmate picks their name and a free color and the home becomes the default on their device.
+*Alternative:* unknown code: the error is reported.
+
+== UC-03 Mark a zone as done (FR-04, FR-05). The flatmate opens the current week and sees their zones.. They press "Mark as done"; the proposed date is today and can be changed.. The system records the completion and all members see it in real time.
+*Alternative:* correcting the date saves the same zone and week again, without duplicating. "Undo" removes the cleaning.
+
+== UC-04 Settle a cleaning nobody did (FR-13). A week ends with a zone that was not cleaned. It appears for the person who had it, in the history and in a badge.. They choose how to settle it: done late (with a date), covered by a flatmate, not at home, or made up by taking a cleaning of a flatmate in the running week or a later one.. The system records the settlement, shows it to everybody and, when the cleaning is made up, tells the flatmate that they do not have to clean that zone.
+*Alternative:* the author or the owner undoes the settlement.
+
+== UC-05 Manage expenses (FR-14). A member adds an expense: what it was for, the amount, who paid and who it is split between.. The system computes the balances and the payments that settle everything up.. A member records a payment between two people; the balances change.
+*Alternative:* the author edits or deletes an expense. When the reset date comes, the owner settles and the expenses start again.
+
+== UC-06 Check Tricount (FR-09). The flatmate presses the Tricount button.. The system opens the home's configured link.
+
+== UC-07 Recover access (FR-11, FR-12). With Google: the person signs in again on the new phone and their homes come back.. Without Google: the owner releases their name, and the person joins again with the code, keeping what they cleaned.
+*Alternative:* a flatmate who joined without Google signs in to an existing Google account: their homes move to it.
+
+== UC-08 Manage the home (FR-08, FR-15, FR-17). The owner edits people and zones, renames the home, or hands it over to a member with Google linked.. Edits of people and zones apply from the next week; past weeks do not change.. The owner can delete the home for good after typing its name; everything it holds is removed for everybody.

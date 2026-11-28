@@ -1,0 +1,86 @@
+= IAS: User manual
+:toc:
+:lang: en
+
+Housely shares out the cleaning of your home's common areas with a fair weekly rotation, and keeps the shared expenses. In the app a flat is called a *home*.
+
+== Install the app
+Housely is a website that installs like an app and also works offline. There is also an Android app: see link:../android.md[The Android app].
+
+=== iPhone or iPad. Open Housely's address in *Safari*.. Tap *Share* and then *Add to Home Screen*.. Open Housely from the new icon.
+
+IMPORTANT: On iPhone, Safari deletes the data of a website that is not opened for a week, unless it is installed. Installing it avoids losing access to your home.
+
+=== Android
+Install it from Chrome:
+
+* *From Chrome*: open the address and accept the *Install app* prompt, or use the menu and *Install app*.
+* *The APK* is still being tested: it does not open on some phones. Until it does, install from Chrome; it is the same app and it updates itself.
+
+== The sections
+The bar at the bottom has five sections:
+
+* *Week*: who cleans which zone this week, and the progress of the week.
+* *History*: a calendar and a list of every week, and the cleanings still to settle. A badge shows how many are yours.
+* *People*: the members of the home, their colors and who has Google linked.
+* *Expenses*: shared expenses, balances and payments.
+* *Settings*: language, light or dark appearance, your Google account, the home's options and the version.
+
+The language (Spanish or English) follows the phone and can be changed in *Settings*.
+
+== Create a home
+The first person does this and needs a Google account, so the home can always be found again from a new phone.. Tap *Create a home* and then *Continue with Google*.. The wizard has three steps. Step 1: type the home name and pick the day the rotation starts. The calendar shows how week 1 and week 2 would run.. Step 2: type the people *in rotation order*, tick the circle next to *your* name and choose your color.. Step 3: review the zones (default: living room, kitchen and bathroom). You can add or remove some. Zone names cannot contain `/`.. Tap *Create home*. You will see the 6-character *invite code*: share it with your housemates.
+
+An account can create up to three homes.
+
+== Join a home
+Housemates do not need Google.. Tap *Join a home* and enter the code.. Pick your name from those still free and choose a color nobody has.. From then on the home opens by itself every time you come in.
+
+If you are not signed in with Google, a banner offers to *link Google* so you can get back to the home from another phone. It is optional.
+
+== Every week
+* Under *Week* you see which zone each person has, and yours is highlighted. A line tells you which zone you have next week.
+* When you clean, tap *Mark as done*. The proposed date is today and can be changed. If you make a mistake, change the date or *Undo*.
+* The others see it instantly, even if you are offline: it is saved when you get a connection again.
+* If there are more people than zones, whoever has no zone appears as *Free this week*. Over time everybody cleans the same amount: in a full cycle each person cleans each zone once.
+* Housy, the mascot, shows how the week goes. It is happy when everything is clean and angry when you have cleanings to settle.
+* You can share the week's rotation on WhatsApp.
+
+== History and settling cleanings
+*History* shows a month calendar with who cleaned what each day, or the list week by week, by person or by zone.
+
+When a week ends and a zone was not cleaned, it appears under *Cleanings nobody did*. The person who had it settles it, choosing one of these:
+
+* *Done late*: it was cleaned after the week, on a date you choose.
+* *Covered by someone*: a housemate cleaned it for you.
+* *I was not at home*: you were away.
+* *Make up with another cleaning*: you take a cleaning of a housemate in the running week or a later one, picked on the calendar, and they do not have to do it.
+
+Everybody sees how each cleaning was settled, with an optional note. Whoever settled it, or the owner, can *Undo* it. When someone has no pending cleanings left, the app offers a WhatsApp message to say so; the list of pending ones can also be shared.
+
+== Expenses
+Under *Expenses* anyone can add an expense: what it was for, the amount, who paid and who it is split between (everybody equally by default). The app works out the balances and who has to pay whom to settle up. Press *Mark as paid* to record a payment. Whoever added an expense can edit or delete it.
+
+The owner can set how often the expenses reset. A week before the date a banner asks everybody to settle up, and a summary can be shared on WhatsApp.
+
+If your home also uses Tricount, the owner can add the link with *Add Tricount link*. Only `https` links on tricount.com are accepted. Everyone will see the *Open Tricount* button.
+
+== Your homes
+You can keep several homes on one device. Use *Change home* in *Settings* to switch. If you sign in with Google, your homes come back on any phone. If you were in a home without Google and then sign in to a Google account that already exists, the homes you joined come with you.
+
+== If you lose your phone or the app resets
+* *With Google:* sign in again and your homes come back.
+* *Without Google:*. Ask the home *owner* to *release* you in the *People* list (*Release*, and confirm).. From the new phone, tap *Join a home*, type the code and pick your name.. What you had already cleaned is kept.
+
+NOTE: The owner cannot release themselves, which is why the owner always has Google linked.
+
+== What the owner can do
+* Edit people and zones. The change applies from next week; this week and every week already lived stay as they were.
+* Rename the home.
+* Free the name of a housemate who lost their phone.
+* Hand the home over to a housemate who has Google linked. You stay in the home as a member.
+* Set the expense reset period and the Tricount link.
+* *Delete home*: removes the home for everybody, with its cleanings, expenses and history. It asks you to type the name of the home and cannot be undone.
+
+== Log out and leave
+*Log out* in *Settings* makes the device forget your homes. With Google they come back when you sign in again; without Google you will need the invite code of each home and the owner has to free your name first.

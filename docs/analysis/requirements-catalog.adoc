@@ -1,0 +1,49 @@
+= ASI: Requirements catalog
+:toc:
+:lang: en
+
+In the app a flat is called a *home*.
+
+== Functional requirements
+
+[cols="1,4,1,1",options="header"]
+|===
+| ID | Description | Priority | Issue
+
+| FR-01 | Create a home by giving a name, members, zones and the rotation start date. Creating needs Google sign-in | High | Implemented (https://github.com/Glinbor10/housely/issues/21[#21])
+| FR-02 | The created home opens automatically on later visits | High | Implemented (https://github.com/Glinbor10/housely/issues/21[#21])
+| FR-03 | Join a home with an invite code, choose who you are and pick a free color | High | Implemented (https://github.com/Glinbor10/housely/issues/22[#22])
+| FR-04 | See this week's zone assignment, highlighting your own, and the zone you have next week | High | Implemented
+| FR-05 | Mark a zone as done with a date, today by default and editable, and undo it | High | Implemented
+| FR-06 | Automatic, fair rotation every week, with any number of members and zones | High | Implemented
+| FR-07 | View the history by week, person and zone, as a list and as a month calendar | Medium | Implemented
+| FR-08 | Edit zones and members without losing the history: the change applies from the next week | Medium | Implemented
+| FR-09 | Button to open the Tricount expenses with a configurable link | Medium | Implemented
+| FR-10 | All members see the same state in real time | High | Implemented (https://github.com/Glinbor10/housely/issues/21[#21])
+| FR-11 | Recover access: the owner releases a member whose device was lost, and that member joins again with the code | High | Implemented
+| FR-12 | Find your homes again from a new phone by signing in with Google, and move the homes joined without Google to an existing Google account | High | Implemented
+| FR-13 | Settle a zone that nobody cleaned: done late, covered by someone, not at home, or made up with another cleaning | Medium | Implemented
+| FR-14 | Shared expenses: add expenses and payments, split them, see balances and who pays whom, and reset them periodically | Medium | Implemented
+| FR-15 | Each person has a color from a fixed palette, and the owner can hand the home over to a member with Google linked | Low | Implemented
+| FR-16 | Keep several homes on one device and switch between them | Medium | Implemented
+| FR-17 | The owner can delete a home for good, with everything it holds | Low | Implemented
+| FR-18 | Share the invite code, the week's rotation, the list of pending cleanings and the expenses summary through WhatsApp and other apps | Low | Implemented
+| FR-19 | An Android app (Trusted Web Activity) built by the release and attached to it | Low | Implemented
+|===
+
+== Non-functional requirements
+
+[cols="1,4,1",options="header"]
+|===
+| ID | Description | Issue
+
+| NFR-01 | Works on Android and iOS as an installable PWA |
+| NFR-02 | Only the members of a home can read or modify its data | https://github.com/Glinbor10/housely/issues/16[#16]
+| NFR-03 | Zero infrastructure cost | Spark plan
+| NFR-04 | Basic accessibility (WCAG) and texts in Spanish and English | Implemented
+| NFR-05 | Domain free of UI and storage dependencies, verified with architecture tests | https://github.com/Glinbor10/housely/issues/11[#11]
+| NFR-06 | Every change passes lint, formatting, types, tests and build before merging |
+| NFR-07 | Works offline: opens the home from the cache and queues what is marked until the network is back | Implemented
+| NFR-08 | Security headers and a strict content policy with no violations | Implemented
+| NFR-09 | Only the real app can use the backend: App Check with reCAPTCHA Enterprise | Applied; enforcement is a pending step (https://github.com/Glinbor10/housely/issues/27[])
+|===

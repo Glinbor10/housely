@@ -1,0 +1,10 @@
+= ADR-0004: Computed assignment, not stored
+:lang: en
+
+*Status:* accepted
+
+*Context:* members and zones can change over time.
+
+*Decision:* compute each week's assignment with `members[(week + zoneIndex) % memberCount]` and store only the completions.
+
+*Consequences:* adding or removing members or zones breaks nothing, and the logic is a pure function that is easy to test (`src/domain/rotation.ts`). The history of who was due in past weeks depends on the members that were active at the time.

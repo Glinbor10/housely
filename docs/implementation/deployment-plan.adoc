@@ -1,0 +1,26 @@
+= IAS: Deployment and acceptance plan
+:toc:
+:lang: en
+
+== Deployment
+* Every merge to `main` deploys to `housely-ci` (`merge-main` pipeline).
+* Production is deployed with the *Release Action*, which computes the version from the tags, deploys to `housely-prod` and creates the GitHub Release. The `production` environment must require manual approval.
+
+== Acceptance tests
+They are run on `housely-ci` by the three flatmates before a release is launched:
+
+[cols="1,3",options="header"]
+|===
+| ID | Test
+| AT-01 | Create a flat, close the browser and reopen it: the flat is still active (FR-01, FR-02)
+| AT-02 | A second phone joins with the code and sees the same state (FR-03, FR-10)
+| AT-03 | Mark a zone as done: the other phones see it without reloading (FR-05, FR-10)
+| AT-04 | Install as an app on Android and iOS (NFR-01)
+| AT-05 | A user outside the flat cannot read its data (NFR-02)
+|===
+
+== User guide
+See link:user-manual.adoc[the user manual] and link:versioning-and-release.adoc[the versioning and release procedure].
+
+== Acceptance test automation
+AT-01 to AT-04 are automated as real-browser tests on Android and iPhone (`e2e/`) and run on every PR and every merge; AT-05 is covered by the rules tests. Installing on a physical iPhone and a physical Android remains manual.

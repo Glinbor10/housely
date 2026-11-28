@@ -1,0 +1,149 @@
+= DSI: Data model (Firestore)
+:toc:
+:lang: en
+
+The zone assignment is *not stored*: it is computed with `member = members[(week + zoneIndex) % memberCount]`. Only data that cannot be derived is stored. In the app a flat is called a *home*; the collection keeps the name `flats`.
+
+[source]
+----
+flats/{flatId}
+  name, startDate, zones[], previousZones[] (optional), tricountUrl (optional, https on tricount.com only),
+  inviteCode, ownerUid, createdAt, periodClose (optional), deleting (optional, only true)
+flats/{flatId}/members/m{order}
+  name, color (from a fixed palette), uid (identity that claimed it, or null), active, order (position in the rotation),
+  hasGoogle (optional, only true)
+flats/{flatId}/users/{uid}
+  memberId (membership: links an identity to its member)
+flats/{flatId}/layouts/{fromWeek}
+  fromWeek, members[], zones[] (what the rotation looked like from that week on)
+flats/{flatId}/completions/{weekIndex}_{zone}
+  weekIndex, zone, memberId, doneAt (YYYY-MM-DD)
+flats/{flatId}/settlements/{weekIndex}_{zone}
+  weekIndex, zone, kind (late | covered | away | madeUp), memberId, settledAt,
+  doneAt, coveredBy, tookWeek, tookZone, note (each only for the kinds that use it)
+flats/{flatId}/takeovers/{weekIndex}_{zone}
+  weekIndex, zone, takerId, fromId, debtWeek, debtZone, takenAt
+flats/{flatId}/expenses/{expenseId}
+  kind (expense | payment), title, amountCents, paidBy, participants[], date, createdBy, createdAt
+flats/{flatId}/transfers/{memberId}
+  fromUid, secret, createdAt, expiresAt, claimedBy, proof (never read by a client)
+inviteCodes/{code}
+  flatId, ownerUid, flatName (so a joiner sees the home name before joining)
+userFlats/{uid}/flats/{flatId}
+  memberId, flatName (the homes of an identity: how a Google account finds them from a new phone)
+owners/{uid}
+  flatCount (homes created by this identity, at most 3), freed (the home deleted by the last decrease)
+----
+
+=== How the collections relate
+
+[source,mermaid]
+----
+erDiagram
+  FLAT ||--|{ MEMBER : "m0 to m19"
+  FLAT ||--o{ USER : "membership of an identity"
+  FLAT ||--o{ LAYOUT : "from week, after an edit"
+  FLAT ||--o{ COMPLETION : "week_zone"
+  FLAT ||--o{ SETTLEMENT : "week_zone"
+  FLAT ||--o{ TAKEOVER : "week_zone"
+  FLAT ||--o{ EXPENSE : "expense or payment"
+  FLAT ||--o{ TRANSFER : "one per member"
+  FLAT ||--|| INVITE_CODE : "inviteCode"
+  USER }o--|| MEMBER : "memberId"
+  USER_FLAT }o--|| FLAT : "flatId"
+  OWNER ||--o{ FLAT : "created, at most 3"
+  FLAT {
+    string name
+    string startDate
+    array zones
+    string inviteCode
+    string ownerUid
+  }
+  MEMBER {
+    string name
+    string color
+    string uid
+    int order
+    bool active
+  }
+  USER {
+    string memberId
+  }
+  COMPLETION {
+    int weekIndex
+    string zone
+    string memberId
+    string doneAt
+  }
+  EXPENSE {
+    string kind
+    int amountCents
+    string paidBy
+    array participants
+  }
+  INVITE_CODE {
+    string flatId
+    string flatName
+  }
+  USER_FLAT {
+    string memberId
+    string flatName
+  }
+  OWNER {
+    int flatCount
+  }
+----
+
+Names in capitals are the collections above: `USER` is `flats/{flatId}/users/{uid}`, `USER_FLAT` is `userFlats/{uid}/flats/{flatId}` and `OWNER` is `owners/{uid}`. `MEMBER.uid` and the ids of `USER`, `USER_FLAT` and `OWNER` are Firebase Authentication identities, which live outside Firestore. A member with `uid` null has not joined yet.
+
+=== Create, share, join and mark done
+
+[source,mermaid]
+----
+sequenceDiagram
+  actor O as Owner (Google)
+  actor J as Flatmate (anonymous)
+  participant FS as Firestore rules
+  O->>FS: batch: flat, members, users/{uid}, inviteCodes/{code}, owners/{uid}, userFlats
+  Note over FS: flat create: hasGoogle, ownerUid is the caller, flatCount goes up by exactly one
+  Note over FS: inviteCodes create: getAfter(flat) has this owner, name and code
+  FS-->>O: written
+  O-->>J: invite code (WhatsApp, Telegram, email, share sheet)
+  J->>FS: get inviteCodes/{code}
+  Note over FS: any signed-in identity can get a code, never list them
+  J->>FS: read members (names and colors)
+  J->>FS: batch: claim a member (uid), users/{uid}, userFlats
+  Note over FS: member update: uid was null, only uid, color and hasGoogle change
+  Note over FS: users create: getAfter(member).uid is the caller and it was unclaimed before
+  FS-->>J: member of the flat
+  J->>FS: set completions/{week}_{zone}
+  Note over FS: isMember, zone exists, id is week_zone, memberId is the caller's member
+  FS-->>O: real-time update
+----
+
+Every `get`, `exists` and `getAfter` above is a billed read, even when the request is denied.
+
+== Modeling decisions
+* The completion identifier combines week and zone: marking again corrects the date without duplicating. Settlements and takeovers use the same identifier, so there is one per zone and week.
+* `order` keeps the order in which the members were entered: the rotation depends on it and Firestore does not guarantee any order by identifier.
+* `active` allows deactivating a member without breaking the history.
+* `uid` links a member to the identity of their device. `hasGoogle` marks the members who linked a Google account: only they can be made owner.
+* `layouts` keep the history right when the owner edits people or zones: the change applies from the next week and every layout only describes the weeks from its `fromWeek` on. `previousZones` are the zones still valid to mark as done until the new layout starts.
+* Member ids are `m0` to `m19` and must match `order`: this is how the rules cap a home at 20 people, because a collection cannot be counted in a rule.
+* `owners/{uid}` counts the homes an identity created. A home can only be created in a batch that raises the counter by exactly one, and the counter cannot exceed 3. Deleting a home lowers it by one, once per home.
+* Money is stored as whole cents (`amountCents`). Balances and the payments to settle up are computed (`src/domain/expenses.ts`), not stored.
+* `periodClose` holds the next date at which the expenses reset and the interval in months.
+
+== Access rules (NFR-02)
+Implemented in `firebase/firestore/firestore.rules` and verified with tests on the emulator (`npm run test:rules`).. A user is a *member* of a home if `flats/{flatId}/users/{uid}` exists. Only members read the home and what it holds.. Create a home: only a user whose identity is linked to Google (`request.auth.token.firebase.identities` contains `google.com`), who becomes the owner (`ownerUid`).. Join: the user claims an unclaimed member (`uid == null`) and creates their membership in the same batch. An already claimed member cannot be claimed. A person can pick their own color and nothing else about themselves.. Only the owner edits the home, its layouts and its members. The start date never changes. The owner can hand the home over, but only to a member with `hasGoogle`, so it is never left without someone who can recover their account. The owner can release a member (never their own).. Completions: a member only records, corrects or deletes their own, for an existing zone, with a valid date and a `week_zone` identifier.. Settlements: any member can settle a zone of a week that is over (the server works out which weeks are over), and a zone with a cleaning is never settled. Only the author or the owner changes or undoes it. A settlement that makes up a zone is created together with a takeover and undone together with it.. Expenses: any member reads them and writes in their own name; only the author edits or deletes one. A payment goes from one person to exactly one other.. Transfers: a member who joined without Google leaves a ticket (ten minutes, one use) before signing in to a Google account that already exists, so the member can move to that account. Nobody reads a ticket: only the rules do.. Invite codes: they can be read, not listed. Creating one requires the `flatName` to match the home.. `userFlats/{uid}`: each identity reads and writes only its own list.. Deleting a home: the owner first marks it with `deleting`; only then can the owner remove everything the home holds, the home included, and free the slot in `owners`. Without the mark, a home and its data are never deleted by clients.. Abuse limits: at most 3 homes per identity, at most 20 people and 20 zones per home and weeks up to 1040 (about 20 years).
+
+=== Limits and their reach
+With anonymous sign-in, an identity is in practice a browser profile on a device. The limits bound what each identity and each home can hold and prevent accidents, but they do not stop a determined attacker, because a new anonymous identity is free. The real protection against abuse is Firebase App Check and quota alerts (Issue https://github.com/Glinbor10/housely/issues/20[#20]).
+
+=== Anonymous accounts must not be cleaned up automatically
+Firebase can delete the anonymous accounts older than 30 days, but only when the project is upgraded to Authentication with Identity Platform and the clean-up is switched on. It is not, and it must stay that way: a flatmate who never linked Google would lose their member and their access. An account that is linked to any sign-in method is never deleted by it. Firebase also limits the new accounts, anonymous ones included, to 100 an hour for each IP address, which a group of flatmates on the same network does not come close to.
+
+=== Conscious trade-off
+Member names (`members`) are readable by any authenticated user, so that whoever joins can pick theirs before becoming a member. The home identifier is random and is only obtained through the invite code. The rest of the home's data is not exposed.
+
+Issue https://github.com/Glinbor10/housely/issues/16[#16].

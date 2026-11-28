@@ -1,0 +1,131 @@
+= MSI: Backup and restore of the data
+:toc:
+:lang: en
+
+== Why we make our own copy
+The Spark plan has no backups. Scheduled backups, managed export and point-in-time recovery need billing, that is, the Blaze plan (Firebase docs). On 2026-11-13 both databases had point-in-time recovery off and there were no backups, so data that was deleted could not be brought back.
+
+This tool reads the whole database with a read-only account, encrypts it and writes one file. It costs only reads, which fit in the free quota, and it needs no change of plan.
+
+[source]
+----
+npm run backup -- --project housely-prod          # make a copy
+npm run backup:verify -- backups/<file>.hsbk      # check it
+npm run backup:restore -- backups/<file>.hsbk --project housely-prod
+----
+
+[source,mermaid]
+----
+flowchart LR
+  subgraph laptop["A laptop, by hand"]
+    BK["npm run backup"]
+    VF["npm run backup:verify"]
+    RS["npm run backup:restore"]
+  end
+  F[("Firestore of housely-ci or housely-prod")]
+  AU[("Firebase Authentication accounts")]
+  K[/"backups/project-moment.hsbk, AES-256-GCM"/]
+  MF[/"manifest.json: counts, size, SHA-256, no data"/]
+  AE[/"auth export JSON: has emails, not encrypted by the tool"/]
+  OFF["Second place, not this computer"]
+  F -->|"read-only key, Cloud Datastore Viewer"| BK
+  BK --> K
+  BK --> MF
+  K --> VF
+  MF --> VF
+  K --> OFF
+  AU -->|"firebase auth:export"| AE
+  AE --> OFF
+  K --> RS
+  RS -->|"dry run by default, writes only with --apply --confirm and a Cloud Datastore User key"| F
+----
+
+The passphrase comes only from `BACKUP_PASSPHRASE`, never from the command line, and is kept apart from the copies. A restore leaves existing documents as they are unless `--overwrite`, and refuses a copy of another project unless `--allow-other-project`.
+
+== What it saves and what it does not
+*It saves* every document of Firestore, in every collection and subcollection, keeping its types (dates, references, binary data). That includes the paths where no document is stored but there are documents below, like `userFlats/{uid}/flats/{flatId}`: a copy that skipped them would lose how a Google account finds its homes from a new phone.
+
+*It does not save:*
+
+* The accounts of Firebase Authentication (see <<Authentication accounts>>). Every member points to an account through `uid`.
+* The rules, the indexes and the app: they are in Git.
+* An exact instant. The copy is read document by document over a few seconds, so what changes during it may be captured at different moments.
+
+== What it costs
+About two reads for each path it visits. The demo data of the app (68 documents) cost 146 reads, 0.3% of the 50,000 reads a day that the free quota of Firestore gives. The limit `--max-documents` (10,000 by default) stops the copy before it reads the documents of a database that is much bigger than expected. The names of the documents of one collection are listed in one go, and that listing cannot be capped.
+
+== Set it up once. In the Google Cloud console of the project, go to *IAM and admin > Service accounts* and create `housely-backup-reader` with the role *Cloud Datastore Viewer* (`roles/datastore.viewer`), which only reads.. Create a JSON key for it and keep it *outside* the repository, for example in `%USERPROFILE%\.housely\housely-prod-backup-key.json`. Git ignores `*-key.json`, `service-account*.json`, `*.hsbk` and `/backups/` as a safety net, not as a plan. If the console does not let you create keys, an organization policy is blocking it.. Choose a passphrase of at least 12 characters and keep it in a password manager, *apart from the copies*. If it is lost, the copies cannot be read.
+
+== Make a copy
+In PowerShell:
+
+[source,powershell]
+----
+$env:GOOGLE_APPLICATION_CREDENTIALS = "$HOME\.housely\housely-prod-backup-key.json"
+$env:BACKUP_PASSPHRASE = Read-Host "Passphrase"
+npm run backup -- --project housely-prod
+----
+
+In a Unix shell: `read -rs BACKUP_PASSPHRASE && export BACKUP_PASSPHRASE`. The passphrase is never a command line option, so it does not stay in the history of the shell.
+
+It writes `backups/housely-prod-<UTC moment>.hsbk`, which is encrypted, and next to it a `.manifest.json` with the number of documents per collection, the size and a fingerprint (SHA-256). The manifest holds no data. Then check the copy:
+
+[source]
+----
+npm run backup:verify -- backups/housely-prod-20261113T123045Z.hsbk
+----
+
+It decrypts the file, checks that it is complete (the count matches, every path is the path of a document) and that it matches its manifest.
+
+== Where to keep the copies
+* Not only on this computer: put a second copy on a different device or place.
+* Weekly is enough for a flat; keep the last 8.
+* *Delete the old ones.* A home that its owner deletes for good stays inside the older copies until they are deleted. Keeping them 90 days at most is a decision of ours, to be reviewed.
+
+== Authentication accounts
+Firestore does not hold the accounts. Export them with the Firebase CLI, which works on the Spark plan (on 2026-11-13 it exported the 2,408 accounts of `housely-ci`, almost all anonymous):
+
+[source]
+----
+npx firebase-tools auth:export auth-housely-prod.json --format=json --project housely-prod
+----
+
+The file has personal data (the emails of the Google accounts). The tool does not encrypt it: keep it inside an encrypted place and delete it when its copy is rotated.
+
+== Restore
+A restore writes with a key that bypasses the rules of Firestore: it puts what the copy says, without checking it. Because of that it is made on purpose, in steps.. *Verify* the copy (above).. *Do it in a dry run first.* Without `--apply` nothing is written; it says how many documents are new, how many exist and would be replaced, and how many it leaves as they are:
++
+[source]
+----
+npm run backup:restore -- backups/<file>.hsbk --project housely-prod
+----. *Write.* It needs a key that can write (`Cloud Datastore User`, `roles/datastore.user`): use a separate key only for that day and delete it afterwards. The project has to be typed twice:
++
+[source]
+----
+npm run backup:restore -- backups/<file>.hsbk --project housely-prod --apply --confirm housely-prod
+----. A document that already exists is *left as it is*, because it may be newer than the copy. Add `--overwrite` only when you want the copy to win.. A copy of one project is not put into another unless you add `--allow-other-project`.. Open the app and check that the homes are there. If the Authentication accounts were also lost, restore them first.
+
+=== Practice before you need it
+Restore into the local emulator, which cannot hurt anything:
+
+[source,powershell]
+----
+npx firebase-tools --config firebase/firebase.json emulators:start --only firestore --project demo-housely
+# in another terminal
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
+$env:BACKUP_PASSPHRASE = Read-Host "Passphrase"
+npm run backup:restore -- backups/<file>.hsbk --project demo-housely --allow-other-project --apply --confirm demo-housely
+----
+
+== Limits of this copy
+* It is not point-in-time: it cannot go back to "yesterday at 10:00". For that, point-in-time recovery needs billing and has no free tier.
+* JSON cannot tell `1` from `1.0`: a decimal number that is whole comes back as an integer. The app only stores integers and text for what it uses.
+* Documents are read one by one, so the copy of a flat that is being edited may show a half-finished change.
+* It runs by hand. A scheduled run needs the key and the passphrase to be available to whatever runs it, which is a decision about where to keep them. With GitHub Actions on again it can be a weekly workflow that takes both from secrets.
+* The tests run against the Firestore emulator, with a full round trip and with the demo data. The first real run, on `housely-ci`, is still to be done.
+
+== Sources
+* Backups need the Blaze plan: https://firebase.google.com/docs/firestore/backups
+* Point-in-time recovery needs billing: https://firebase.google.com/docs/firestore/use-pitr
+* Free quota of Firestore: https://firebase.google.com/docs/firestore/quotas
+* Roles of Firestore: https://docs.cloud.google.com/iam/docs/roles-permissions/firestore

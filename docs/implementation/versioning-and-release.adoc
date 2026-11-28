@@ -1,0 +1,76 @@
+= IAS: Versioning and release procedure
+:toc:
+:lang: en
+
+== Versioning
+Semantic versioning `MAJOR.MINOR.PATCH` is used. The version is not stored in a file: it is derived from the Git tags `vX.Y.Z`.
+
+[cols="1,3",options="header"]
+|===
+| Part | When it goes up
+| PATCH | Bug fixes with no functional changes (`v0.1.1`)
+| MINOR | New backwards-compatible functionality (`v0.2.0`). While the version is `0.x` it also marks the plan's milestones
+| MAJOR | Breaking change, or declaring the product stable (`v1.0.0`)
+|===
+
+The first MVP version is *`v0.1.0`*: the release is launched with `bump = minor` starting from `v0.0.0`.
+
+== Environments and flow
+
+[cols="1,2,2",options="header"]
+|===
+| Environment | Firebase project | How it gets there
+| PR | `housely-ci` (rules and indexes only) | Every PR from this repository, when `FIRESTORE_DEPLOY_ENABLED` is true. The Hosting preview channel was removed in
+| CI | `housely-ci` | Every merge to `main`; runs the browser tests against it. By hand when GitHub Actions are off (<<Deploy to CI by hand>>)
+| Production | `housely-prod` | Manual *Release Action* workflow, only the owner can launch it
+|===
+
+[source,mermaid]
+----
+flowchart TD
+  PR["Pull request"] --> CHK["PR Action: lint, format, types, tests with coverage, build"]
+  PR --> RT["Rules tests on the emulator"]
+  PR --> EE["Browser tests on the emulators (informational)"]
+  CHK -->|FIRESTORE_DEPLOY_ENABLED| RD["Rules and indexes deployed to housely-ci"]
+  CHK --> MERGE{"Squash merge to main"}
+  RT --> MERGE
+  MERGE --> MM["Main merge: same checks, build named last tag + commit"]
+  MM --> CI["housely-ci: Hosting, then rules and indexes"]
+  CI --> E2E["Browser tests on Android and iPhone against housely-ci"]
+  E2E --> REL{"Owner launches Release Action"}
+  REL --> VER["Verify: lint, types, tests, production dependency audit"]
+  VER --> PROD["housely-prod: rules and indexes, then Hosting"]
+  PROD --> SMOKE["Smoke test that writes no data"]
+  SMOKE --> GH["Tag vX.Y.Z and GitHub Release"]
+  GH --> APK["Signed APK attached to the release"]
+----
+
+A red step stops everything below it. The rules of a PR are live in `housely-ci` while the PR is open, before the rules tests of that PR finish: run `npm run test:rules` before pushing.
+
+== Release procedure. Check that `main` is green (latest *Main merge* succeeded) and that `housely-ci` looks right on an Android phone and an iPhone.. On GitHub, go to *Actions*, *Release Action*, *Run workflow* and choose `patch`, `minor` or `major`.. The workflow *verifies* (lint, types, tests, production dependency audit) and deploys only if everything passes. Today the only gate is launching it by hand (only the owner can) and the `production` environment only admits protected branches. Required reviewers can be added to the `production` environment as an extra gate.. It deploys the Firestore rules, deploys the web app, runs a smoke test that *writes no data* and creates the tag and the GitHub Release with its notes.. Check production from a phone and verify the version in the GitHub Release.
+
+== Deploy to CI by hand
+When GitHub Actions are off, `housely-ci` is deployed from a laptop with the same pinned Firebase CLI. The web config is public; its values are the variables of the `ci` environment in GitHub (`gh variable list --env ci`).
+
+[source,powershell]
+----
+npx -y firebase-tools@15.34.0 login        # once, with an account that can deploy housely-ci
+$env:VITE_FIREBASE_API_KEY = "<from the ci environment>"
+# ... the same for VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_APP_ID,
+#     VITE_FIREBASE_MESSAGING_SENDER_ID and VITE_APPCHECK_SITE_KEY
+$env:VITE_APP_VERSION = "<last tag without v>+<short commit>"
+npm ci; npm run lint; npm run typecheck; npm test; npm run test:rules
+npm run build                               # writes firebase/dist
+npx -y firebase-tools@15.34.0 --config firebase/firebase.json deploy --only hosting,firestore --project housely-ci
+npm run e2e                                 # with E2E_BASE_URL set to the CI website
+----
+
+Production is never deployed this way: it goes through the *Release Action*, which creates the tag and the release.
+
+== Rollback
+* *Web:* Firebase Hosting keeps the previous versions. In the Firebase console, go to *Hosting*, *Version history*, and *Roll back* to the previous one. It is immediate.
+* *Firestore rules:* they are versioned in Git. Revert the change with a PR and deploy again, or republish the previous version from *Firestore*, *Rules*, *History*.
+* *Data:* model changes must be backwards compatible; there are no destructive migrations.
+
+== Production prerequisites
+Once per environment, and manually:. Enable the Firestore API, create the database (production mode, region `eur3`, a multi-region in Belgium and the Netherlands: the location cannot be changed afterwards) and enable anonymous authentication. Do not enable the automatic clean-up of anonymous accounts (see the data model).. Review the restrictions of the web key in Google Cloud. The Firebase docs ask for API restrictions (which APIs the key can call) and say the key is public by design; restricting it by domain is optional and is not part of their guidance.. Give the service account the *Firebase Rules Admin* and *Cloud Datastore Index Admin* roles and set `FIRESTORE_DEPLOY_ENABLED=true`.. When the repository is public, require reviewer approval on the GitHub `production` environment.

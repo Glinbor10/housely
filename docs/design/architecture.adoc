@@ -1,0 +1,80 @@
+= DSI: Architecture
+:toc:
+:lang: en
+
+== Overview
+A single-page application (PWA) that talks directly to Firebase. There is no own backend: security is enforced with Firestore rules.
+
+[source,mermaid]
+----
+flowchart LR
+  subgraph devices["Devices"]
+    M["Phone or desktop: React PWA, offline cache"]
+    T["Android app: Trusted Web Activity"]
+  end
+  subgraph project["Firebase project: housely-ci or housely-prod (Spark plan)"]
+    H["Hosting: serves dist/ with the Content-Security-Policy"]
+    A["Auth: anonymous, Google for owners"]
+    AC["App Check: reCAPTCHA Enterprise, measures only, see issue 95"]
+    R{{"Firestore security rules"}}
+    F[("Firestore (default), eur3")]
+  end
+  subgraph delivery["Delivery"]
+    G["GitHub Actions: PR, Main merge, Release Action"]
+    CLI["Firebase CLI from a laptop, when Actions are off"]
+    GR["GitHub Release: APK"]
+  end
+  subgraph backup["Own backup (scripts/backup)"]
+    B["npm run backup: read-only service account"]
+    K[/"Encrypted .hsbk file + manifest, outside the repository"/]
+  end
+  T -->|opens the website| H
+  H -->|serves the app| M
+  M -->|sign in| A
+  M -->|token, refreshed while open| AC
+  M -->|real-time reads and writes| R
+  R -->|allow or deny every request| F
+  G -->|deploy Hosting and rules| H
+  G -->|deploy rules and indexes| R
+  G -->|signed APK| GR
+  CLI -.->|same deploy by hand| H
+  CLI -.-> R
+  F -->|reads every document| B
+  B --> K
+----
+
+There is no server of our own and no Cloud Functions: the rules are the only part that the client cannot skip. Both Firebase projects are built the same way; only the data and who uses them differ. App Check is wired in the app (`src/firebase/app.ts`) but not enforced yet, so today it only measures. The backup tool and the rules deploy use service accounts that never reach the phone.
+
+Flatmates sign in anonymously and join with an invite code. The person who creates a home signs in with Google, so the home can be found again from any phone. A member who joined anonymously can link Google later, or move to a Google account that already exists through a transfer ticket (see the data model). The Android app is a shell that opens the live website (see link:../android.md[The Android app]).
+
+== Code layers
+
+[cols="2,4",options="header"]
+|===
+| Folder | Responsibility
+
+| `src/domain` | Pure logic: rotation and layouts, completions, settlements and takeovers, history and calendar, expenses and money, mascot mood, flat validation. No React or Firebase
+| `src/firebase` | Data layer: Firestore repository, Auth (anonymous and Google), transfer of a member between identities, App Check and Firebase configuration
+| `src/hooks` | React hooks and small external stores (subscriptions, navigation and the back button, online state). They subscribe to the data layer and run actions
+| `src/storage` | Device-only state in the browser's `localStorage` (with an in-memory fallback): which homes and members this device holds, and small preferences. Home data is not stored here
+| `src/i18n` | Spanish and English texts (English is the source of truth) and the translation of error codes
+| `src/pwa` | Install-hint detection and the web app manifest
+| `src/effects`, `src/motion*.ts`, `src/theme.ts` | Celebration effect, motion presets and the theme tokens
+| `src/components` | Presentational UI with MUI
+| `src/screens` | The only layer that joins the others into pages: sign-in gate, onboarding and the home screen with its five sections
+|===
+
+The allowed dependencies are verified with architecture tests (`src/architecture.test.ts`): the domain does not depend on any other layer, components do not depend on storage, Firebase or hooks, no other layer depends on screens, and there are no cycles.
+
+== Environments
+
+[cols="1,2,2",options="header"]
+|===
+| Environment | Firebase project | Deployment
+| PR | `housely-ci` (rules and indexes only) | Automatic on every PR from this repository, when `FIRESTORE_DEPLOY_ENABLED` is true. There is no Hosting preview.
+| CI | `housely-ci` | Automatic on merge to `main` (*Main merge*); by hand with the Firebase CLI when GitHub Actions are off
+| Production | `housely-prod` | Manual *Release Action*, launched by the owner
+|===
+
+== Decisions
+See link:adr/0001-pwa-instead-of-native-app.adoc[ADR-0001] to link:adr/0004-computed-assignment.adoc[ADR-0004].

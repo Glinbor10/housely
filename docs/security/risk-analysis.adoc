@@ -1,0 +1,40 @@
+= Security: risk analysis and data protection
+:toc:
+:lang: en
+
+== Data processed
+* First names of the people of a home (personal data) and the color each one chose.
+* Anonymous Firebase Auth identifier per device.
+* For the people who sign in with Google (the owner, and any flatmate who links an account): the Google account identifier and email, which Firebase Auth keeps. The app does not copy the email into its data; it only stores whether a member has Google linked.
+* Cleaning dates and settlements linked to each member.
+* Expenses and payments between members: a short description, an amount and the people involved. No bank or card data is processed: the app records who owes whom and never moves money.
+No special-category data or location is processed. The Tricount link is a URL; the Tricount service is not accessed.
+
+== Principles applied
+* *Minimization:* only name, color and activity; no phone, and no email beyond what Google sign-in itself provides to Firebase Auth.
+''s members.
+* *Secrets:* service account keys live only in GitHub Secrets.
+* *Separate environments:* test data goes to `housely-ci`.
+* *Transport:* all traffic goes over HTTPS (Firebase Hosting and SDK).
+
+== Data protection
+Use among flatmates falls under personal or household activity, which Article 2(2)(c) of the GDPR excludes from its scope. As long as the app is used only this way, there is no formal obligation; if it were opened to third parties or commercialized, this would have to be reviewed (privacy policy, legal basis and user rights). This is not legal advice.
+
+== Risks and controls
+
+[cols="3,3,2",options="header"]
+|===
+| Risk | Control | Status
+| Access to another flat's data | Firestore rules and tests | Issue https://github.com/Glinbor10/housely/issues/16[#16]
+| Content injection in the web app | CSP headers | Issue https://github.com/Glinbor10/housely/issues/17[#17]
+| Vulnerable dependencies | Dependabot, CodeQL, `npm audit` | Issue https://github.com/Glinbor10/housely/issues/15[#15]
+| Credential leak | GitHub Secrets, no secrets in the repo | Applied
+| Data a person wants removed | The owner can delete a home for good with everything it holds; a person can leave by asking the owner to free their name | Applied
+| Scripts using the project without the app (public web config, free anonymous identities) | App Check with reCAPTCHA Enterprise, plus the rules: Google sign-in to create a flat, an invite code to join, caps per identity and per flat | Applied; enforcement is still pending (https://github.com/Glinbor10/housely/issues/27[])
+| Data loss | Scheduled Firestore backups or export | Both need the Blaze plan (Firebase docs). Point-in-time recovery needs billing too and has no free tier: it is charged for the PITR storage (GiB a month) and keeps 7 days of versions, against 1 hour when it is off. Checked on 2026-11-13 in `housely-ci` and `housely-prod`: point-in-time recovery was off in both and the version retention is 3600 s. Delete protection was off in both; it was turned on in `housely-ci` that day and `housely-prod` still has it off. See https://github.com/Glinbor10/housely/issues/20[#20]
+|===
+
+== Abuse protection (public app)
+The app is meant for flatmates but is public, so it is protected in layers:. *Rules*: creating a home requires an identity linked to Google; joining requires a valid invite code; there are caps per identity (3 homes) and per home (20 people, 20 zones, 1040 weeks). An anonymous identity alone can neither read nor write any flat.. *App Check*: once it is enforced, Firebase only answers requests that carry a token proving they come from this app in a real browser, and a script that only knows the public web config (it ships in the page) is rejected. Until then App Check only measures: the Firebase docs say it "won't block requests with invalid tokens until App Check is enforced" (enforcement is pending, https://github.com/Glinbor10/housely/issues/27[]; on 2026-11-13 the console showed Authentication at 100% verified requests in monitoring mode and Cloud Firestore not enforced and without metrics yet, and the production environment already has its site key and serves a build that carries it). The reCAPTCHA Enterprise site key is injected per environment as `VITE_APPCHECK_SITE_KEY`. reCAPTCHA Enterprise is no-cost for 10,000 assessments a month and has a cost beyond that (the free assessments are per organization, across all its sites); the Firebase docs do not say what happens to a project on Spark beyond them. Every refresh of the token is one assessment, and the app refreshes it twice an hour while it is open (the default lifetime is one hour and the auto refresh is turned on in `src/firebase/app.ts`), so 10,000 assessments are about 5,000 hours of open app a month. With no key (local work, tests, emulators) App Check is off.. *Quota watching*: both projects are on the Spark plan (Firebase console, "no cost", checked on 2026-11-13), which needs no payment method, so nothing is charged. The free quota of Firestore is 50,000 reads, 20,000 writes and 20,000 deletes a day and 1 GiB stored. The Firebase docs disagree on what happens when it runs out: the Firestore quota page says it resets daily around midnight Pacific time, while the Spark plan page says that exceeding a no-cost limit in a calendar month shuts that product off for the rest of the month. The worse case is assumed. Every `get` or `exists` call in a rule is a billed read, even when the request is rejected, so the rules also spend this quota. Usage is reviewed in the Firebase console. Linking a Cloud Billing account, or using a paid Google Cloud service in the project, upgrades it to Blaze automatically, so neither is done. If the app grows, moving to Blaze brings scheduled backups and budget alerts (https://github.com/Glinbor10/housely/issues/20[#20]); the alerts do not cap spending, and a spend cap exists only for a few other Firebase services, not for Firestore.
+
+=== Enabling it in an environment. In the Google Cloud console (Security > Fraud Defense, project of the environment) enable the reCAPTCHA Enterprise API if asked and create a *score-based Web key* for the domain of the environment (for example `housely-ci.web.app`), with the checkbox challenge off and no `localhost`.. In Firebase console > App Check > Apps > Web, register the app with the *reCAPTCHA Enterprise* provider and that key. On the Spark plan only four score thresholds are offered (0.1, 0.3, 0.7 and 0.9); to have all of them a Cloud Billing account would have to be linked, which upgrades the project to Blaze, so it is not done.. Add the repository variable `VITE_APPCHECK_SITE_KEY` to the GitHub environment (`ci`, `production`) and deploy.. Watch the App Check metrics for Authentication and Firestore until almost all the recent requests are verified.. Only then press *Enforce*, once for each service. Enforcing earlier would lock out installed copies of the app that have not updated yet (the Firebase docs say it breaks the versions that do not have the App Check SDK). It can take up to 15 minutes to take effect, and App Check for Authentication is marked as Preview in the Firebase docs.

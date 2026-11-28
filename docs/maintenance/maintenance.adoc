@@ -1,0 +1,21 @@
+= MSI: Maintenance
+:toc:
+:lang: en
+
+* *Incidents:* issues with the `bug` template, assigned automatically and prioritized in the Project.
+* *Enhancements:* issues with the `feature` template, tied to a milestone.
+* *Versions:* semantic, by tags (`vX.Y.Z`), created with the Release Action.
+* *Dependencies:* Dependabot groups the weekly updates by ecosystem; they are merged if CI passes.
+* *Backups:* Spark has none of its own, so we make a copy of the data with `npm run backup`: see link:backup-and-restore.adoc[backup-and-restore.adoc].
+* *Periodic review:* review the Firebase free-plan quotas and the state of security alerts.
+
+== Production metrics
+A production build (CI and production, never local work, tests or the emulators) starts Firebase Performance Monitoring. It is free on the Spark plan and writes nothing to Firestore.
+
+* *Load and network:* Firebase console > Performance > Dashboard. Page load times and the duration of every request to Firebase, by country, browser and connection. The first data shows up some hours after the first visits.
+* *Errors:* Firebase console > Performance > Custom traces > `app_error`. One sample per error, split by the attributes `kind` (`uncaught`, `rejection`, `firestore`), `name` (the type of the error) and `code` (the Firebase code without its service). Firestore errors are only counted for `permission-denied` (the rules reject the app) and `resource-exhausted` (the free quota is used up).
+* *No personal data:* a report never carries the message of the error, which can hold names, emails, identities or the name of a home; only the kind, the type and the code, each checked to be a plain identifier (`src/monitoring/errorReport.ts`).
+* *Content-Security-Policy:* the SDK talks to `firebaseinstallations.googleapis.com`, `firebaseremoteconfig.googleapis.com` and `firebaselogging.googleapis.com`, already allowed by `https://*.googleapis.com` in `connect-src`. It loads no script.
+* *Web key:* if the web key has API restrictions, they must include the Firebase Installations API, the Firebase Remote Config API and the Firebase Performance Monitoring API, or the SDK cannot send its data.
+
+What to do with what it shows:. A rise of `app_error` with `code` `permission-denied` after a deploy: the new rules reject something the app does. Deploy the rules of the previous version.. Any `resource-exhausted`: the daily free quota of Firestore ran out. See the quotas in `docs/security/risk-analysis.adoc` and issue #25.. `uncaught` or `rejection`: a bug. Reproduce it with the `name` and the screen, and open an .

@@ -1,0 +1,10 @@
+= ADR-0002: Firebase as a managed backend
+:lang: en
+
+*Status:* accepted
+
+*Context:* real-time state must be shared between phones without maintaining a server.
+
+*Decision:* Firebase (Hosting, Firestore and anonymous Auth), with two projects: `housely-ci` and `housely-prod`.
+
+*Consequences:* no own backend; security depends on the Firestore rules, which are versioned and tested in CI.

@@ -1,0 +1,48 @@
+= Housely Documentation
+:toc:
+:lang: en
+
+Project documentation tailored from https://administracionelectronica.gob.es/[Métrica v3] to a very small system: only the essential products of each process are kept, short and linked to the issues and the code.
+
+== Approach
+Métrica v3 supports two approaches: structured and object-oriented. Housely follows the *object-oriented approach (UML)*: use cases, domain model and sequence diagrams.
+
+The implementation is *functional TypeScript*: the domain is pure functions (`src/domain`) and the model concepts (flat, member, zone, completion) are implemented as types. UML is used to model the domain; it does not require writing classes.
+
+== Métrica v3 map
+
+The folders are named in English; the Métrica v3 process code is shown in brackets.
+
+[cols="2,3,3",options="header"]
+|===
+| Process / interface | Products | Location
+
+| Feasibility study (EVS) | Scope, alternatives, risks | link:feasibility/feasibility-study.adoc[feasibility/]
+| System analysis (ASI) | Requirements catalog, use cases | link:analysis/requirements-catalog.adoc[analysis/]
+| System design (DSI) | Architecture, data model, decisions (ADR) | link:design/architecture.adoc[design/]
+| System construction (CSI) | Code, unit and architecture tests | `src/`
+| Implementation and acceptance (IAS) | Environments, deployment, acceptance tests, user manual and versioning | link:implementation/deployment-plan.adoc[implementation/] (link:implementation/user-manual.adoc[manual], link:implementation/versioning-and-release.adoc[versioning and release])
+| Maintenance (MSI) | Incident and version management | link:maintenance/maintenance.adoc[maintenance/]
+| Project management (GPR) | Plan, milestones and risks | link:project-management/project-plan.adoc[project-management/]
+| Security | Risk analysis and data protection | link:security/risk-analysis.adoc[security/]
+| Quality assurance | Quality plan, test plan and traceability | link:quality/quality-plan.adoc[quality/] (link:quality/test-plan.adoc[tests])
+| Configuration management (GCO) | Branches, versioning, environments | link:configuration-management/configuration-management.adoc[configuration-management/]
+|===
+
+== Traceability
+Each requirement in the catalog (`FR-xx`, `NFR-xx`) is linked to its , and each issue to its PR. Milestones are the iterations of the project plan.
+
+== Vocabulary
+The code and the data use *flat* (`flats`, `FlatScreen`); the app shows *home* to the people using it. The documents use one or the other depending on whether they describe the data or what the person sees.
+
+== Identifier conventions
+
+[cols="1,3",options="header"]
+|===
+| Prefix | Meaning
+| `FR-xx` | Functional requirement
+| `NFR-xx` | Non-functional requirement
+| `UC-xx` | Use case
+| `AT-xx` | Acceptance test
+| `R-xx` | Project risk
+|===

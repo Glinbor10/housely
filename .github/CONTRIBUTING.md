@@ -9,7 +9,7 @@
 5. Open a Pull Request with a conventional-commit title and `Closes #N` linking its issue (the `PR title and linked issue` check enforces it; Dependabot only needs the title). `main` is protected: the CI check must pass and nobody pushes directly.
 6. Squash and merge. The branch is deleted automatically.
 
-To report a security problem, follow [SECURITY.md](SECURITY.md) instead of opening an issue.
+To report a security problem, follow [SECURITY.md](SECURITY.md) instead of opening an .
 
 ## Repository layout
 
