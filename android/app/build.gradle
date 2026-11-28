@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+// What changes between the APK of CI and the one of production comes in as -P properties, so the same
+// project builds both:  gradle assembleDebug -PtwaHost=housely-ci.web.app -PappIdSuffix=.ci
+def twaHost = findProperty('twaHost') ?: 'housely-prod.web.app'
+def appIdSuffix = findProperty('appIdSuffix') ?: ''
+def appLabel = findProperty('appLabel') ?: 'Housely'
+def versionNameValue = findProperty('appVersionName') ?: '0.0.0-dev'
+def versionCodeValue = (findProperty('appVersionCode') ?: '1') as int
+
+// The signing key never lives in the repository: the workflow writes it from secrets into a temporary
+// file and passes where it is. Without it a release cannot be signed, so only a debug APK is built.
+def keystoreFile = System.getenv('ANDROID_KEYSTORE_FILE')
+
+android {
+    namespace 'io.github.glinbor10.housely'
+    // The libraries that androidbrowserhelper brings need to compile against Android 16 (API 36)
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'io.github.glinbor10.housely' + appIdSuffix
+        minSdk 24
+        targetSdk 35
+        versionCode versionCodeValue
+        versionName versionNameValue
+
+        // The manifest and the resources read these values, so no file has to be edited per environment
+        manifestPlaceholders = [hostName: twaHost]
+        resValue 'string', 'app_name', appLabel
+        resValue 'string', 'default_url', "https://${twaHost}/"
+        // Tells Android that this app and the website belong together (the website says it back in
+        // /.well-known/assetlinks.json: that is what hides the address bar)
+        resValue 'string', 'asset_statements',
+                '[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "web", "site": "https://' + twaHost + '"}}]'
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile) {
+                storeFile file(keystoreFile)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // There is no code of ours to shrink: the app only opens the website
+            minifyEnabled false
+            if (keystoreFile) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // LauncherActivity: opens the website in Chrome as a Trusted Web Activity
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The navy of the mascot, like theme_color in the web manifest (src/pwa/manifest.ts) -->
+    <color name="brand">#1f3a70</color>
+    <!-- Behind the house in the icon -->
+    <color name="icon_background">#dce8fb</color>
+</resources>
