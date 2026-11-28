@@ -138,7 +138,7 @@ Every release attaches the signed APK, named `housely-X.Y.Z-release.apk`, to its
 Until the cause is found, the user manual sends people to install the app from Chrome.
 
 The signing key and its passwords live outside the repository, on the owner's computer, and in the
-`ANDROID_*` secrets. The key was replaced on 2026-11-14  before any APK was published.
+`ANDROID_*` secrets. The key was replaced on 2026-11-14 before any APK was published.
 
 ## Building on your computer
 
