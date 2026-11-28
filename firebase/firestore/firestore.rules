@@ -1,0 +1,500 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // True when the identity has Google linked. Anonymous identities (the default for flatmates)
+    // do not, which is what keeps creating flats for people who can recover their account.
+    function hasGoogle() {
+      return signedIn() && request.auth.token.firebase.identities.keys().hasAny(['google.com']);
+    }
+
+    function flatPath(flatId) {
+      return /databases/$(database)/documents/flats/$(flatId);
+    }
+
+    // A user is a member when a membership document exists under their uid.
+    function isMember(flatId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/flats/$(flatId)/users/$(request.auth.uid));
+    }
+
+    function memberIdOf(flatId) {
+      return get(/databases/$(database)/documents/flats/$(flatId)/users/$(request.auth.uid)).data.memberId;
+    }
+
+    function isOwner(flatId) {
+      return signedIn() && get(flatPath(flatId)).data.ownerUid == request.auth.uid;
+    }
+
+    // Used in writes that create the flat and its members in the same batch.
+    function isOwnerAfter(flatId) {
+      return signedIn() && getAfter(flatPath(flatId)).data.ownerUid == request.auth.uid;
+    }
+
+    // The owner is deleting the flat for good: the owner marks the flat first, and from then on can remove
+    // everything it holds, the flat included. Nobody else gets this, and without the mark nobody does. The
+    // mark is part of the flat, so it goes away with it.
+    function isDeletingFlat(flatId) {
+      return isOwner(flatId)
+        && get(flatPath(flatId)).data.get('deleting', false) == true;
+    }
+
+    function isShortText(value, max) {
+      return value is string && value.size() >= 1 && value.size() <= max;
+    }
+
+    function isValidPeriodClose(pc) {
+      return pc is map
+        && pc.keys().hasOnly(['nextCloseDate', 'intervalMonths', 'lastClosedAt'])
+        && pc.keys().hasAll(['nextCloseDate', 'intervalMonths'])
+        && pc.nextCloseDate is string && pc.nextCloseDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && pc.intervalMonths is int && pc.intervalMonths >= 1 && pc.intervalMonths <= 12
+        && (!('lastClosedAt' in pc) || (pc.lastClosedAt is string && pc.lastClosedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')));
+    }
+
+    function isValidFlat(data) {
+      return data.keys().hasOnly(['name', 'startDate', 'zones', 'previousZones', 'tricountUrl', 'inviteCode', 'ownerUid', 'createdAt', 'periodClose', 'deleting'])
+        && data.keys().hasAll(['name', 'startDate', 'zones', 'inviteCode', 'ownerUid'])
+        && (!('deleting' in data) || data.deleting == true)
+        && isShortText(data.name, 60)
+        && data.startDate is string && data.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.zones is list && data.zones.size() >= 1 && data.zones.size() <= 20
+        // The zones in force until a new rotation layout starts: still valid to mark as done
+        && (!('previousZones' in data) || (data.previousZones is list && data.previousZones.size() <= 20))
+        && isShortText(data.inviteCode, 12)
+        && (!('tricountUrl' in data) || (data.tricountUrl is string && data.tricountUrl.size() <= 300 && data.tricountUrl.matches('^https://([a-z0-9-]+\\.)*tricount\\.com(/.*)?$')))
+        && (!('periodClose' in data) || isValidPeriodClose(data.periodClose));
+    }
+
+    // The shape of a member. Who may hold its uid is decided where it is created or updated.
+    function isValidMemberShape(data) {
+      return data.keys().hasOnly(['name', 'color', 'uid', 'active', 'order', 'hasGoogle'])
+        && data.keys().hasAll(['name', 'uid', 'active', 'order'])
+        && isShortText(data.name, 40)
+        && data.active is bool
+        && data.order is int && data.order >= 0
+        // The person has Google linked: the only people who can be made owner of the flat
+        && (!('hasGoogle' in data) || data.hasGoogle == true)
+        // The color of a person comes from a fixed palette (the same as src/domain/palette.ts)
+        && (!('color' in data) || data.color in ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#d32f2f', '#0097a7', '#5d4037', '#455a64', '#c2185b', '#9e9d24', '#303f9f', '#ffa000']);
+    }
+
+    function isValidMember(data) {
+      return isValidMemberShape(data)
+        && (data.uid == null || data.uid == request.auth.uid);
+    }
+
+    // What the rotation looked like from a week on. The id is the week, so there is one per week.
+    function isValidLayout(layoutId, data) {
+      return data.keys().hasOnly(['fromWeek', 'members', 'zones'])
+        && data.keys().hasAll(['fromWeek', 'members', 'zones'])
+        && data.fromWeek is int && data.fromWeek >= 0 && data.fromWeek <= 1040
+        && layoutId == string(data.fromWeek)
+        && data.members is list && data.members.size() >= 1 && data.members.size() <= 20
+        && data.zones is list && data.zones.size() >= 1 && data.zones.size() <= 20;
+    }
+
+    function isValidCompletion(flatId, completionId, data) {
+      return data.keys().hasOnly(['weekIndex', 'zone', 'memberId', 'doneAt'])
+        && data.weekIndex is int && data.weekIndex >= 0 && data.weekIndex <= 1040
+        && isShortText(data.zone, 60)
+        && (data.zone in get(flatPath(flatId)).data.zones
+          || data.zone in get(flatPath(flatId)).data.get('previousZones', []))
+        && completionId == string(data.weekIndex) + '_' + data.zone
+        && data.memberId == memberIdOf(flatId)
+        && data.doneAt is string && data.doneAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    // Index of the week that is running now, counted from the Monday of the week of the start date.
+    // It is worked out here, in UTC, so the server decides which weeks are over and not the phone.
+    function currentWeekIndex(flatId) {
+      let start = get(flatPath(flatId)).data.startDate;
+      let day = timestamp.date(int(start[0:4]), int(start[5:7]), int(start[8:10]));
+      let monday = day - duration.value(day.dayOfWeek() - 1, 'd');
+      return math.floor((request.time.toMillis() - monday.toMillis()) / 604800000);
+    }
+
+    // How a zone that nobody cleaned was settled. The identifier is the week and the zone, like a
+    // completion, so there is one per zone and week. The author and the time are checked where it is
+    // created, because they never change afterwards.
+    function isValidSettlement(flatId, settlementId, data) {
+      return data.keys().hasOnly(['weekIndex', 'zone', 'kind', 'memberId', 'coveredBy', 'tookWeek', 'tookZone', 'doneAt', 'note', 'settledAt'])
+        && data.keys().hasAll(['weekIndex', 'zone', 'kind', 'memberId', 'settledAt'])
+        && data.weekIndex is int && data.weekIndex >= 0 && data.weekIndex <= 1040
+        // Only weeks that are over: never the running one or one that has not started
+        && data.weekIndex < currentWeekIndex(flatId)
+        && isShortText(data.zone, 60)
+        && settlementId == string(data.weekIndex) + '_' + data.zone
+        && data.kind in ['late', 'covered', 'away', 'madeUp']
+        && data.memberId is string
+        && (!('doneAt' in data) || (data.doneAt is string && data.doneAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+        && (data.kind != 'late' || 'doneAt' in data)
+        && (data.kind == 'covered'
+          ? ('coveredBy' in data && data.coveredBy is string
+            && exists(/databases/$(database)/documents/flats/$(flatId)/members/$(data.coveredBy)))
+          : !('coveredBy' in data))
+        // Making up goes with the cleaning of a later week that was taken, written in the same batch and
+        // pointing back to this zone; no other type carries one
+        && (data.kind == 'madeUp'
+          ? ('tookWeek' in data && data.tookWeek is int && data.tookWeek > data.weekIndex && data.tookWeek <= 1040
+            && 'tookZone' in data && isShortText(data.tookZone, 60)
+            && existsAfter(takeoverPath(flatId, string(data.tookWeek) + '_' + data.tookZone))
+            && getAfter(takeoverPath(flatId, string(data.tookWeek) + '_' + data.tookZone)).data.debtWeek == data.weekIndex
+            && getAfter(takeoverPath(flatId, string(data.tookWeek) + '_' + data.tookZone)).data.debtZone == data.zone
+            && getAfter(takeoverPath(flatId, string(data.tookWeek) + '_' + data.tookZone)).data.takerId == data.memberId)
+          : (!('tookWeek' in data) && !('tookZone' in data)))
+        && (!('note' in data) || (data.note is string && data.note.size() <= 140));
+    }
+
+    // An expense of the flat, or a payment between two people. Amounts are whole cents. The creator and
+    // the time are checked where it is created, because they never change afterwards.
+    function isValidExpense(flatId, data) {
+      return data.keys().hasOnly(['kind', 'title', 'amountCents', 'paidBy', 'participants', 'date', 'createdBy', 'createdAt'])
+        && data.keys().hasAll(['kind', 'title', 'amountCents', 'paidBy', 'participants', 'date', 'createdBy', 'createdAt'])
+        && data.kind in ['expense', 'payment']
+        && isShortText(data.title, 60)
+        && data.amountCents is int && data.amountCents > 0 && data.amountCents <= 10000000
+        && data.paidBy is string
+        && exists(/databases/$(database)/documents/flats/$(flatId)/members/$(data.paidBy))
+        && data.participants is list && data.participants.size() >= 1 && data.participants.size() <= 20
+        && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.createdBy is string
+        // A payment goes from one person to exactly one other
+        && (data.kind != 'payment' || (data.participants.size() == 1 && data.participants[0] != data.paidBy));
+    }
+
+    function takeoverPath(flatId, takeoverId) {
+      return /databases/$(database)/documents/flats/$(flatId)/takeovers/$(takeoverId);
+    }
+
+    function transferPath(flatId, memberId) {
+      return /databases/$(database)/documents/flats/$(flatId)/transfers/$(memberId);
+    }
+
+    // The ticket that the identity holding a member leaves before signing in to a Google account that
+    // already exists, so the member can move to it. It is never read by a client: it holds the secret
+    // that proves who is claiming it. It lives ten minutes and has one use.
+    function isValidTransferTicket(flatId, memberId, data) {
+      return data.keys().hasOnly(['fromUid', 'secret', 'createdAt', 'expiresAt'])
+        && data.keys().hasAll(['fromUid', 'secret', 'createdAt', 'expiresAt'])
+        && data.fromUid == request.auth.uid
+        && data.secret is string && data.secret.size() == 32
+        && data.createdAt == request.time
+        // The phone cannot know the time of the server exactly: any time from now to ten minutes
+        && data.expiresAt is timestamp && data.expiresAt > request.time
+        && data.expiresAt <= request.time + duration.value(10, 'm')
+        && memberIdOf(flatId) == memberId
+        // The owner already has Google: there is nothing to move
+        && get(flatPath(flatId)).data.ownerUid != request.auth.uid;
+    }
+
+    // An identity with Google is using the ticket of the member, in time and for the first time. The
+    // claim is written in the same batch as the move, which is what getAfter looks at.
+    function isClaimingTransfer(flatId, memberId) {
+      return hasGoogle()
+        && exists(transferPath(flatId, memberId))
+        && !('claimedBy' in get(transferPath(flatId, memberId)).data)
+        && request.time < get(transferPath(flatId, memberId)).data.expiresAt
+        && getAfter(transferPath(flatId, memberId)).data.claimedBy == request.auth.uid
+        && get(flatPath(flatId)).data.ownerUid != get(transferPath(flatId, memberId)).data.fromUid;
+    }
+
+    // A person who does the zone of a flatmate in the running week or a later one, to settle a zone of
+    // a finished week. The author and the time are checked where it is created.
+    function isValidTakeover(flatId, takeoverId, data) {
+      return data.keys().hasOnly(['weekIndex', 'zone', 'takerId', 'fromId', 'debtWeek', 'debtZone', 'takenAt'])
+        && data.keys().hasAll(['weekIndex', 'zone', 'takerId', 'fromId', 'debtWeek', 'debtZone', 'takenAt'])
+        && data.weekIndex is int && data.weekIndex <= 1040
+        && data.weekIndex >= currentWeekIndex(flatId)
+        && isShortText(data.zone, 60)
+        && takeoverId == string(data.weekIndex) + '_' + data.zone
+        && data.takerId is string && data.fromId is string && data.takerId != data.fromId
+        && data.debtWeek is int && data.debtWeek >= 0 && data.debtWeek < data.weekIndex
+        && isShortText(data.debtZone, 60);
+    }
+
+    match /flats/{flatId} {
+      // Flats are fetched by id; listing them is never allowed.
+      allow get: if isMember(flatId);
+      allow list: if false;
+      // Creating a flat must bump the owner counter by exactly one in the same batch, which is how
+      // the limit per identity is enforced (see /owners below).
+      allow create: if hasGoogle()
+        && request.resource.data.ownerUid == request.auth.uid
+        && isValidFlat(request.resource.data)
+        && getAfter(/databases/$(database)/documents/owners/$(request.auth.uid)).data.flatCount
+          == (exists(/databases/$(database)/documents/owners/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/owners/$(request.auth.uid)).data.flatCount
+            : 0) + 1;
+      allow update: if isOwner(flatId)
+        && isValidFlat(request.resource.data)
+        // The start of the rotation never changes: every week would move, and the history with it.
+        && request.resource.data.startDate == resource.data.startDate
+        && (
+          request.resource.data.ownerUid == resource.data.ownerUid
+          // Handing the flat over: only the owner changes, and to a member who has joined and has
+          // Google linked, so the flat is never left without somebody who can recover their account.
+          // The old owner stays in the flat as a member.
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerUid'])
+            && exists(/databases/$(database)/documents/flats/$(flatId)/users/$(request.resource.data.ownerUid))
+            && get(/databases/$(database)/documents/flats/$(flatId)/members/$(get(/databases/$(database)/documents/flats/$(flatId)/users/$(request.resource.data.ownerUid)).data.memberId)).data.get('hasGoogle', false) == true
+          )
+        );
+      // Only once the owner marked it as being deleted
+      allow delete: if isDeletingFlat(flatId);
+
+      // Membership: links an anonymous uid with the member it claimed.
+      match /users/{uid} {
+        allow get: if isMember(flatId);
+        allow list: if false;
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['memberId'])
+          && request.resource.data.memberId is string
+          && getAfter(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId)).data.uid == request.auth.uid
+          && (
+            // Flat creator: the member is created in the same batch.
+            !exists(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId))
+            // Joiner: the member was unclaimed before the batch.
+            || get(/databases/$(database)/documents/flats/$(flatId)/members/$(request.resource.data.memberId)).data.uid == null
+            // The member moves here from the identity that left a ticket.
+            || isClaimingTransfer(flatId, request.resource.data.memberId)
+          );
+        allow update: if false;
+        // Only the owner removes a membership, never their own, and only together with freeing the
+        // member in the same batch: nobody can be left without a way back in.
+        allow delete: if isDeletingFlat(flatId) || (
+            isOwner(flatId)
+            && uid != get(flatPath(flatId)).data.ownerUid
+            && getAfter(/databases/$(database)/documents/flats/$(flatId)/members/$(resource.data.memberId)).data.uid == null
+          ) || (
+            // The identity that left behind moves its membership to the one that claims the ticket.
+            hasGoogle()
+            && exists(transferPath(flatId, resource.data.memberId))
+            && get(transferPath(flatId, resource.data.memberId)).data.fromUid == uid
+            && isClaimingTransfer(flatId, resource.data.memberId)
+            && getAfter(/databases/$(database)/documents/flats/$(flatId)/members/$(resource.data.memberId)).data.uid == request.auth.uid
+          );
+      }
+
+      // Member names are readable by any signed-in user so a joiner can pick theirs.
+      // The flat id is a random id only reachable through an invite code.
+      match /members/{memberId} {
+        allow read: if signedIn();
+        // Ids are m0 to m19 and match the order, which caps a flat at 20 people.
+        allow create: if isOwnerAfter(flatId)
+          && isValidMember(request.resource.data)
+          // Only the creator, who has Google, can be marked as having it when the flat is made
+          && (!('hasGoogle' in request.resource.data)
+            || (hasGoogle() && request.resource.data.uid == request.auth.uid))
+          && request.resource.data.order < 20
+          && memberId == 'm' + string(request.resource.data.order);
+        allow update: if (
+            // The owner edits a member. The uid can only be kept or released (set to null), and
+            // never for the owner's own member.
+            isOwner(flatId)
+            && (
+              request.resource.data.uid == resource.data.uid
+              || (request.resource.data.uid == null && resource.data.uid != get(flatPath(flatId)).data.ownerUid)
+            )
+            && isValidMemberShape(request.resource.data)
+          ) || (
+            // A person picks their own color, and nothing else about themselves.
+            signedIn()
+            && isMember(flatId)
+            && memberIdOf(flatId) == memberId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['color', 'hasGoogle'])
+            // The mark that they have Google is only given to those who really have it linked
+            && (!('hasGoogle' in request.resource.data) || hasGoogle())
+            && isValidMemberShape(request.resource.data)
+          ) || (
+            // A joiner claims an unclaimed member, and may choose their color at the same time.
+            signedIn()
+            && resource.data.uid == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'color', 'hasGoogle'])
+            && (!('hasGoogle' in request.resource.data) || hasGoogle())
+            && request.resource.data.uid == request.auth.uid
+            && isValidMemberShape(request.resource.data)
+          ) || (
+            // The member moves to an identity with Google that holds the ticket of the one who has it now
+            isClaimingTransfer(flatId, memberId)
+            && resource.data.uid == get(transferPath(flatId, memberId)).data.fromUid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'hasGoogle'])
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.get('hasGoogle', false) == true
+            && isValidMemberShape(request.resource.data)
+          );
+        allow delete: if isDeletingFlat(flatId);
+      }
+
+      // The ticket to move a member to a Google account. Nobody reads it: only the rules do.
+      match /transfers/{memberId} {
+        allow read: if false;
+        allow create: if isMember(flatId) && isValidTransferTicket(flatId, memberId, request.resource.data);
+        // The holder issues it again, or an identity with Google claims it with the secret
+        allow update: if (
+            isMember(flatId) && isValidTransferTicket(flatId, memberId, request.resource.data)
+          ) || (
+            hasGoogle()
+            && !('claimedBy' in resource.data)
+            && request.time < resource.data.expiresAt
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedBy', 'proof'])
+            && request.resource.data.claimedBy == request.auth.uid
+            && request.resource.data.proof == resource.data.secret
+          );
+        allow delete: if isDeletingFlat(flatId) || (isMember(flatId) && memberIdOf(flatId) == memberId);
+      }
+
+      // What the rotation looked like from each week on: editing people or zones adds a layout and
+      // never changes the weeks before it. Layouts are only deleted together with the flat.
+      match /layouts/{layoutId} {
+        allow read: if isMember(flatId);
+        allow create, update: if isOwner(flatId) && isValidLayout(layoutId, request.resource.data);
+        allow delete: if isDeletingFlat(flatId);
+      }
+
+      // Zones that nobody cleaned and the group settled: done late, covered by somebody or because the person was not at the flat.
+      // Any member can settle; only the author or the owner can change or undo it. A zone that has a
+      // cleaning is never settled: the cleaning is not rewritten.
+      match /settlements/{settlementId} {
+        allow read: if isMember(flatId);
+        allow create: if isMember(flatId)
+          && isValidSettlement(flatId, settlementId, request.resource.data)
+          && request.resource.data.memberId == memberIdOf(flatId)
+          && request.resource.data.settledAt == request.time
+          && !exists(/databases/$(database)/documents/flats/$(flatId)/completions/$(settlementId));
+        allow update: if isMember(flatId)
+          && (resource.data.memberId == memberIdOf(flatId) || isOwner(flatId))
+          // One that makes up with a cleaning is never edited: it is undone together with that cleaning
+          && resource.data.kind != 'madeUp' && request.resource.data.kind != 'madeUp'
+          && isValidSettlement(flatId, settlementId, request.resource.data)
+          && request.resource.data.memberId == resource.data.memberId
+          && request.resource.data.settledAt == resource.data.settledAt;
+        allow delete: if isDeletingFlat(flatId) || (isMember(flatId)
+          && (resource.data.memberId == memberIdOf(flatId) || isOwner(flatId)));
+      }
+
+      // The cleanings that a person took from a flatmate to make up a zone. They are created together
+      // with the settlement of that zone, never edited, and undone together with it by the same person
+      // while the cleaning is not done.
+      match /takeovers/{takeoverId} {
+        allow read: if isMember(flatId);
+        allow create: if isMember(flatId)
+          && isValidTakeover(flatId, takeoverId, request.resource.data)
+          && request.resource.data.takerId == memberIdOf(flatId)
+          && request.resource.data.takenAt == request.time
+          && !exists(/databases/$(database)/documents/flats/$(flatId)/completions/$(takeoverId))
+          && existsAfter(/databases/$(database)/documents/flats/$(flatId)/settlements/$(string(request.resource.data.debtWeek) + '_' + request.resource.data.debtZone))
+          && getAfter(/databases/$(database)/documents/flats/$(flatId)/settlements/$(string(request.resource.data.debtWeek) + '_' + request.resource.data.debtZone)).data.kind == 'madeUp';
+        allow update: if false;
+        allow delete: if isDeletingFlat(flatId) || (isMember(flatId)
+          && resource.data.takerId == memberIdOf(flatId)
+          && !exists(/databases/$(database)/documents/flats/$(flatId)/completions/$(takeoverId)));
+      }
+
+      // Expenses and payments of the flat. Anybody in it reads them and writes in their own name; only who
+      // wrote one can change or delete it.
+      match /expenses/{expenseId} {
+        allow read: if isMember(flatId);
+        allow create: if isMember(flatId)
+          && isValidExpense(flatId, request.resource.data)
+          && request.resource.data.createdBy == memberIdOf(flatId)
+          && request.resource.data.createdAt == request.time;
+        allow update: if isMember(flatId)
+          && resource.data.createdBy == memberIdOf(flatId)
+          && isValidExpense(flatId, request.resource.data)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.kind == resource.data.kind;
+        allow delete: if isDeletingFlat(flatId) || (isMember(flatId)
+          && resource.data.createdBy == memberIdOf(flatId));
+      }
+
+      match /completions/{completionId} {
+        allow read: if isMember(flatId);
+        allow create, update: if isMember(flatId)
+          && isValidCompletion(flatId, completionId, request.resource.data);
+        allow delete: if isDeletingFlat(flatId) || (isMember(flatId)
+          && resource.data.memberId == memberIdOf(flatId));
+      }
+    }
+
+    // How many flats an identity owns that it created: at most 3. It goes up by one when a flat is
+    // created, and down by one when the owner deletes a flat for good (once per flat: it names the flat
+    // that is being deleted in the same batch, which cannot happen twice).
+    match /owners/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['flatCount'])
+        && request.resource.data.flatCount == 1;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && (
+          (
+            request.resource.data.keys().hasOnly(['flatCount'])
+            && request.resource.data.flatCount == resource.data.flatCount + 1
+            && request.resource.data.flatCount <= 3
+          ) || (
+            request.resource.data.keys().hasOnly(['flatCount', 'freed'])
+            && request.resource.data.flatCount == resource.data.flatCount - 1
+            && request.resource.data.flatCount >= 0
+            && request.resource.data.freed is string
+            && exists(flatPath(request.resource.data.freed))
+            && !existsAfter(flatPath(request.resource.data.freed))
+            && get(flatPath(request.resource.data.freed)).data.ownerUid == request.auth.uid
+          )
+        );
+      allow delete: if false;
+    }
+
+    // The flats of each person, so they can be found again from a new phone after signing in with
+    // Google. Written together with the membership, readable and deletable only by its owner.
+    match /userFlats/{uid}/flats/{flatId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['memberId', 'flatName'])
+        && request.resource.data.memberId is string
+        && isShortText(request.resource.data.flatName, 60)
+        && getAfter(/databases/$(database)/documents/flats/$(flatId)/users/$(uid)).data.memberId == request.resource.data.memberId;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // The invite code is the capability to find a flat. It can be read but never listed.
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      // flatName is a copy of the name of the flat: whoever joins sees which flat it is before being a
+      // member, and it is what the per-person index of flats stores.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['flatId', 'ownerUid', 'flatName'])
+        && request.resource.data.keys().hasAll(['flatId', 'ownerUid', 'flatName'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && isShortText(request.resource.data.flatName, 60)
+        && getAfter(flatPath(request.resource.data.flatId)).data.ownerUid == request.auth.uid
+        && getAfter(flatPath(request.resource.data.flatId)).data.name == request.resource.data.flatName
+        && getAfter(flatPath(request.resource.data.flatId)).data.inviteCode == code;
+      // The current owner keeps the copy in step with the flat when it is renamed or handed over:
+      // only the name and the owner can change, and always to what the flat says.
+      allow update: if signedIn()
+        && get(flatPath(resource.data.flatId)).data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['flatId', 'ownerUid', 'flatName'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerUid', 'flatName'])
+        && request.resource.data.ownerUid == getAfter(flatPath(resource.data.flatId)).data.ownerUid
+        && request.resource.data.flatName == getAfter(flatPath(resource.data.flatId)).data.name;
+      // Together with the flat, by its owner
+      allow delete: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && exists(flatPath(resource.data.flatId))
+        && !existsAfter(flatPath(resource.data.flatId));
+    }
+  }
+}
