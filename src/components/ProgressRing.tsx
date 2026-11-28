@@ -1,0 +1,72 @@
+import { Box, Typography } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import { m } from 'motion/react'
+import { useTranslation } from '../i18n/useTranslation'
+
+interface ProgressRingProps {
+  done: number
+  total: number
+  size?: number
+}
+
+const RADIUS = 52
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+
+// The week at a glance. The ring fills with a smooth transition, switched off for people who asked
+// for less motion.
+export const ProgressRing = ({ done, total, size = 132 }: ProgressRingProps) => {
+  const theme = useTheme()
+  const { t } = useTranslation()
+  const fraction = total === 0 ? 0 : Math.min(1, done / total)
+  const complete = total > 0 && done >= total
+  const ringColor = complete ? theme.palette.success.main : theme.palette.primary.main
+  return (
+    <Box
+      role="progressbar"
+      aria-label={t('week.progress')}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(fraction * 100)}
+      sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}
+    >
+      <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden="true">
+        <circle
+          cx="60"
+          cy="60"
+          r={RADIUS}
+          fill="none"
+          strokeWidth="12"
+          stroke="currentColor"
+          opacity={0.12}
+        />
+        <m.circle
+          cx="60"
+          cy="60"
+          r={RADIUS}
+          fill="none"
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={CIRCUMFERENCE}
+          transform="rotate(-90 60 60)"
+          initial={{ strokeDashoffset: CIRCUMFERENCE }}
+          animate={{ strokeDashoffset: CIRCUMFERENCE * (1 - fraction) }}
+          transition={{ type: 'spring', stiffness: 80, damping: 18, delay: 0.1 }}
+          style={{ stroke: ringColor }}
+        />
+      </svg>
+      <Typography
+        component="span"
+        variant="h5"
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          display: 'grid',
+          placeItems: 'center',
+          fontWeight: 800,
+        }}
+      >
+        {done}/{total}
+      </Typography>
+    </Box>
+  )
+}
