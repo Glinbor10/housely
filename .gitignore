@@ -1,0 +1,58 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Firebase emulator logs
+*-debug.log
+
+# Test coverage
+coverage
+
+# Playwright
+playwright-report
+test-results
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.keystore
+*.jks
+
+# Notas locales del proyecto
+/PROJECT_NOTES.md
+firebase/.firebase/
+
+# Impeccable: the engine binary is downloaded and checked on first use, it is not versioned
+.claude/skills/impeccable/scripts/bin/
+
+# Copies of the data and the keys that read it: they hold personal data or give access to it
+/backups/
+*.hsbk
+*.hsbk.manifest.json
+service-account*.json
+*-service-account*.json
+*-key.json
+/docs/assets/guide/

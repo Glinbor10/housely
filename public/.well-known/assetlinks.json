@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.glinbor10.housely",
+      "sha256_cert_fingerprints": [
+        "4C:37:82:18:48:BD:E2:1E:32:57:F3:81:C7:6A:D5:DA:9B:3E:62:AE:9E:DE:CB:3C:9C:9B:E7:43:51:6D:13:08",
+        "CF:01:A4:F4:61:0A:DA:C8:55:11:28:93:32:80:48:09:02:E7:5C:92:14:26:34:B3:15:18:FA:BF:DA:D6:58:DA"
+      ]
+    }
+  }
+]

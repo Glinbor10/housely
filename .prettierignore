@@ -1,0 +1,3 @@
+# Third-party skill and agents (Impeccable): kept as they come from upstream
+.claude/skills/impeccable/
+.claude/agents/
