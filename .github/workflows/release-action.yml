@@ -1,0 +1,192 @@
+name: Release Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to increment from the latest tag
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+jobs:
+  verify:
+    name: Verify (tests and dependency audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+
+  release:
+    name: Create release and deploy to production
+    runs-on: ubuntu-latest
+    needs: [verify]
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    # Only the owner can run this workflow and the environment accepts protected branches only;
+    # required reviewers can be added here once the repository is public
+    environment: production
+    permissions:
+      contents: write
+    env:
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      # reCAPTCHA Enterprise site key of App Check; empty means App Check is off in this environment
+      VITE_APPCHECK_SITE_KEY: ${{ vars.VITE_APPCHECK_SITE_KEY }}
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD != '' && vars.FIREBASE_PROJECT_PROD != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # The version lives in git tags only: no commit to main is needed, so branch protection stays strict.
+      - name: Compute next version from the latest tag
+        id: next
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          LAST_TAG=${LAST_TAG:-v0.0.0}
+          IFS=. read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            *) PATCH=$((PATCH + 1)) ;;
+          esac
+          echo "TAG_VERSION=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_ENV"
+          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+          echo "PREVIOUS_TAG=${LAST_TAG}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ env.TAG_VERSION }}
+
+      # Rules and indexes go out before the tests that depend on them. Controlled by the repository
+      # variable FIRESTORE_DEPLOY_ENABLED: the service account needs the Firebase Rules Admin and
+      # Cloud Datastore Index Admin roles (see docs/configuration-management/configuration-management.adoc).
+      - name: Deploy Firestore rules and indexes
+        if: ${{ env.HAS_FIREBASE == 'true' && vars.FIRESTORE_DEPLOY_ENABLED == 'true' }}
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
+        run: |
+          echo "$SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/service-account.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"             npx -y firebase-tools@15.34.0 --config firebase/firebase.json deploy --only firestore --non-interactive             --project "${{ vars.FIREBASE_PROJECT_PROD }}"
+          rm -f "$RUNNER_TEMP/service-account.json"
+
+      - name: Deploy to Firebase Hosting (production project)
+        if: ${{ env.HAS_FIREBASE == 'true' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          entryPoint: firebase
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_PROD }}
+          projectId: ${{ vars.FIREBASE_PROJECT_PROD }}
+          channelId: live
+
+      - name: Install the browsers for the production smoke test
+        if: ${{ env.HAS_FIREBASE == 'true' }}
+        run: npx playwright install --with-deps chromium webkit
+
+      # Only the tests that never write data: production must not be filled with test flats
+      - name: Smoke test production
+        if: ${{ env.HAS_FIREBASE == 'true' }}
+        run: npx playwright test -c e2e/deployed.config.ts mobile.spec.ts
+        env:
+          E2E_BASE_URL: https://${{ vars.FIREBASE_PROJECT_PROD }}.web.app
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${TAG_VERSION}" \
+            --target "${GITHUB_SHA}" \
+            --title "Release ${TAG_VERSION}" \
+            --generate-notes \
+            --notes "[GitHub Action Info](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+
+  # The Android app opens the website of production, so it only needs to be rebuilt when the app itself
+  # changes, but every release gets one with its own version to keep them together.
+  android:
+    name: Build the Android APK and attach it to the release
+    runs-on: ubuntu-latest
+    needs: [release]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.release.outputs.version }}
+
+      # 1.2.3 becomes 10203: a number that grows with every release, which Android needs to update an app
+      - name: Compute the version code
+        id: code
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "code=$((MAJOR * 10000 + MINOR * 100 + PATCH))" >> "$GITHUB_OUTPUT"
+
+      - id: build
+        uses: ./.github/actions/build-android
+        with:
+          host: ${{ vars.FIREBASE_PROJECT_PROD }}.web.app
+          version-name: ${{ needs.release.outputs.version }}
+          version-code: ${{ steps.code.outputs.code }}
+          keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      # A debug APK is never attached to a release: without the signing key nothing is published
+      - name: Attach the signed APK to the release
+        if: ${{ steps.build.outputs.signed == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.release.outputs.version }}
+          APK: ${{ steps.build.outputs.apk }}
+        run: gh release upload "v${VERSION}" "$APK" --clobber
+
+      # Only the APK of the latest release is kept: the ones of older releases are removed once this one is up
+      - name: Remove the APK of the previous releases
+        if: ${{ steps.build.outputs.signed == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | while read -r tag; do
+            [ "$tag" = "v${VERSION}" ] && continue
+            gh release view "$tag" --json assets --jq '.assets[] | select(.name | endswith(".apk")) | .name' | while read -r asset; do
+              echo "Removing $asset from $tag"
+              gh release delete-asset "$tag" "$asset" --yes
+            done
+          done
+
+      - name: Say that there is no APK because there is no signing key
+        if: ${{ steps.build.outputs.signed != 'true' }}
+        run: |
+          echo "::warning::The release has no APK because the ANDROID_* secrets are not set (see docs/android.md)"

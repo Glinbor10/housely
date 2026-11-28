@@ -1,0 +1,22 @@
+name: Dependency review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    # GitHub only offers it on public repositories or with Advanced Security: while the repository is
+    # private the job is skipped (a skipped check counts as passed) and it runs again once it is public
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Blocks a PR that adds a dependency with a known vulnerability or a license we cannot use
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high

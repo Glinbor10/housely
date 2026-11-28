@@ -1,0 +1,107 @@
+name: Build the Android APK
+description: >
+  Builds the APK of the app (a Trusted Web Activity that opens the website). With a signing key it builds
+  a signed release APK; without one, a debug APK that is signed with an automatic debug key.
+
+inputs:
+  host:
+    description: Host of the website that the app opens, for example housely-prod.web.app
+    required: true
+  app-id-suffix:
+    description: Added to the package name so the APK of CI and the one of production can be installed together
+    default: ''
+  label:
+    description: Name of the app under its icon
+    default: Housely
+  version-name:
+    description: Version that people see
+    required: true
+  version-code:
+    description: Whole number that grows with every release; Android refuses to install an older one over a newer one
+    required: true
+  keystore-base64:
+    description: The signing key file, encoded in base64. Empty builds a debug APK
+    default: ''
+  keystore-password:
+    default: ''
+  key-alias:
+    default: ''
+  key-password:
+    default: ''
+
+outputs:
+  apk:
+    description: Path of the APK that was built
+    value: ${{ steps.build.outputs.apk }}
+  signed:
+    description: 'true when it was signed with the given key'
+    value: ${{ steps.build.outputs.signed }}
+
+runs:
+  using: composite
+  steps:
+    # The Android Gradle Plugin of android/build.gradle needs JDK 17 and Gradle 8.13 or newer
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - uses: gradle/actions/setup-gradle@v6
+      with:
+        gradle-version: 8.14.3
+
+    # The key comes from a secret and only lives in a temporary file while the job runs
+    - name: Write the signing key
+      shell: bash
+      env:
+        KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+      run: |
+        if [ -n "$KEYSTORE_BASE64" ]; then
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/housely.keystore"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/housely.keystore" >> "$GITHUB_ENV"
+        fi
+
+    - name: Build the APK
+      id: build
+      shell: bash
+      env:
+        ANDROID_KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
+        ANDROID_KEY_ALIAS: ${{ inputs.key-alias }}
+        ANDROID_KEY_PASSWORD: ${{ inputs.key-password }}
+        HOST: ${{ inputs.host }}
+        SUFFIX: ${{ inputs.app-id-suffix }}
+        LABEL: ${{ inputs.label }}
+        VERSION_NAME: ${{ inputs.version-name }}
+        VERSION_CODE: ${{ inputs.version-code }}
+      run: |
+        if [ -n "$ANDROID_KEYSTORE_FILE" ]; then
+          TASK=assembleRelease; FOLDER=release; SIGNED=true
+        else
+          TASK=assembleDebug; FOLDER=debug; SIGNED=false
+        fi
+        gradle -p android "$TASK" \
+          -PtwaHost="$HOST" \
+          -PappIdSuffix="$SUFFIX" \
+          -PappLabel="$LABEL" \
+          -PappVersionName="$VERSION_NAME" \
+          -PappVersionCode="$VERSION_CODE"
+        BUILT=$(ls android/app/build/outputs/apk/"$FOLDER"/*.apk | head -n 1)
+        APK="$RUNNER_TEMP/housely-${VERSION_NAME}-${FOLDER}.apk"
+        cp "$BUILT" "$APK"
+        echo "apk=$APK" >> "$GITHUB_OUTPUT"
+        echo "signed=$SIGNED" >> "$GITHUB_OUTPUT"
+
+    # The fingerprint of the key goes in public/.well-known/assetlinks.json: that is what lets the app
+    # open the website without the address bar
+    - name: Show the fingerprint of the key that signed it
+      shell: bash
+      env:
+        APK: ${{ steps.build.outputs.apk }}
+      run: |
+        APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+        {
+          echo "### Signing certificate of the APK"
+          echo '```'
+          "$APKSIGNER" verify --print-certs "$APK" | grep -E "SHA-256|DN"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"

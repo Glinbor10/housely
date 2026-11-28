@@ -1,0 +1,64 @@
+name: Android APK
+
+# Only by hand, to try the app on a phone. Nothing runs it by itself: the APK that people get is built by
+# the release (release-action.yml), against production, so the app and the website always go together.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which website the app opens
+        type: choice
+        options: [ci, production]
+        default: ci
+      sign:
+        description: Sign it with the release key (needs the ANDROID_* secrets)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Build the APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Choose the website and the name of this build
+        id: target
+        env:
+          ENVIRONMENT: ${{ inputs.environment || 'ci' }}
+          PROJECT_CI: ${{ vars.FIREBASE_PROJECT_CI }}
+          PROJECT_PROD: ${{ vars.FIREBASE_PROJECT_PROD }}
+        run: |
+          if [ "$ENVIRONMENT" = "production" ]; then
+            echo "host=${PROJECT_PROD}.web.app" >> "$GITHUB_OUTPUT"
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+            echo "label=Housely" >> "$GITHUB_OUTPUT"
+          else
+            echo "host=${PROJECT_CI}.web.app" >> "$GITHUB_OUTPUT"
+            echo "suffix=.ci" >> "$GITHUB_OUTPUT"
+            echo "label=Housely CI" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=0.0.0-${ENVIRONMENT}.${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - id: build
+        uses: ./.github/actions/build-android
+        with:
+          host: ${{ steps.target.outputs.host }}
+          app-id-suffix: ${{ steps.target.outputs.suffix }}
+          label: ${{ steps.target.outputs.label }}
+          version-name: ${{ steps.target.outputs.version }}
+          version-code: ${{ github.run_number }}
+          # Only a manual run that asks for it signs with the key: the key is never given to a pull request
+          keystore-base64: ${{ inputs.sign && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          keystore-password: ${{ inputs.sign && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
+          key-alias: ${{ inputs.sign && secrets.ANDROID_KEY_ALIAS || '' }}
+          key-password: ${{ inputs.sign && secrets.ANDROID_KEY_PASSWORD || '' }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: housely-android-${{ inputs.environment || 'ci' }}
+          path: ${{ steps.build.outputs.apk }}
+          retention-days: 3

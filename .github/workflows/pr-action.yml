@@ -1,0 +1,133 @@
+name: PR Action
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  check:
+    name: Lint, typecheck, test and build
+    runs-on: ubuntu-latest
+    environment: ci
+    # Skip CI when the PR title contains [skip-ci]
+    if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
+    env:
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      # reCAPTCHA Enterprise site key of App Check; empty means App Check is off in this environment
+      VITE_APPCHECK_SITE_KEY: ${{ vars.VITE_APPCHECK_SITE_KEY }}
+      # Used by the Firestore rules deploy step below.
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI != '' && vars.FIREBASE_PROJECT_CI != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+
+      # Rules and indexes go out before the tests that depend on them. Controlled by the repository
+      # variable FIRESTORE_DEPLOY_ENABLED: the service account needs the Firebase Rules Admin and
+      # Cloud Datastore Index Admin roles (see docs/configuration-management/configuration-management.adoc).
+      - name: Deploy Firestore rules and indexes
+        if: ${{ env.HAS_FIREBASE == 'true' && vars.FIRESTORE_DEPLOY_ENABLED == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HOUSELY_CI }}
+        run: |
+          echo "$SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/service-account.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"             npx -y firebase-tools@15.34.0 --config firebase/firebase.json deploy --only firestore --non-interactive             --project "${{ vars.FIREBASE_PROJECT_CI }}"
+          rm -f "$RUNNER_TEMP/service-account.json"
+
+  rules:
+    name: Firestore rules tests
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Cache Firestore emulator
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-15.34.0
+
+      - run: npm ci
+      - run: npm run test:rules
+
+  emulator-e2e:
+    name: Browser tests on the emulators
+    runs-on: ubuntu-latest
+    # Informational for now: the emulated Google popup is timing-sensitive in real browsers, so a red run
+    # is a signal to look at, not a reason to block a merge. Not a required check.
+    continue-on-error: true
+    if: ${{ !contains(github.event.pull_request.title, '[skip-ci]') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Cache Firebase emulators
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-15.34.0
+
+      - run: npm ci
+
+      - name: Install the browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      # Full flows (create with the simulated Google popup, join, release, offline, find your flat) on
+      # Android (Chromium) and iPhone (WebKit) against the Auth and Firestore emulators
+      - name: End-to-end tests on the emulators
+        run: npm run e2e:emulator
+
+      - name: Upload the end-to-end report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-emulator-report
+          path: |
+            e2e/playwright-report
+            playwright-report
+            test-results
+          retention-days: 2
